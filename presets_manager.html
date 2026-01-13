@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preset Manager - MystriX</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="has-dock">
+    <main class="hero" style="max-width:1100px; margin:0 auto; padding:24px;">
+      <h1 style="margin:0 0 8px;">Preset Manager</h1>
+      <p class="subcopy" style="margin:0 0 12px;">Manage per-asset slots. Slots are per symbol, so A/B/C (or bull/bear/chop) are unique per asset.</p>
+
+      <section class="glass">
+        <div class="form-grid">
+          <label><span>Symbol</span><input id="pm-symbol" type="text" value="BTC/USDT" /></label>
+          <label><span>Slot Name</span><input id="pm-slot" type="text" value="bull" /></label>
+          <label><span>Product</span>
+            <select id="pm-product"><option value="mystrix" selected>mystrix</option></select>
+          </label>
+        </div>
+        <div class="btn-row">
+          <button class="cta" id="pm-load-list">Load Slots</button>
+          <button class="cta" id="pm-load-slot">Load Slot</button>
+          <button class="cta" id="pm-save-slot">Save Slot</button>
+          <button class="cta" id="pm-delete-slot">Delete Slot</button>
+          <a class="cta" href="magic_v2.html">Back to Lab</a>
+        </div>
+        <p id="pm-status" class="status"></p>
+      </section>
+
+      <section class="glass" style="margin-top:10px;">
+        <h3 style="margin:0 0 6px;">Long Params</h3>
+        <div class="form-grid">
+          <label><span>RSI Length</span><input id="pl-rsi-len" class="themed-number" type="number" value="14" /></label>
+          <label><span>RSI OB</span><input id="pl-rsi-ob" class="themed-number" type="number" value="79" /></label>
+          <label><span>RSI OS</span><input id="pl-rsi-os" class="themed-number" type="number" value="27" /></label>
+          <label><span>Pivot L</span><input id="pl-lb-l" class="themed-number" type="number" value="5" /></label>
+          <label><span>Pivot R</span><input id="pl-lb-r" class="themed-number" type="number" value="5" /></label>
+          <label><span>Range Low</span><input id="pl-range-low" class="themed-number" type="number" value="5" /></label>
+          <label><span>Range Up</span><input id="pl-range-up" class="themed-number" type="number" value="60" /></label>
+        </div>
+      </section>
+
+      <section class="glass" style="margin-top:10px;">
+        <h3 style="margin:0 0 6px;">Short Params</h3>
+        <div class="form-grid">
+          <label><span>RSI Length</span><input id="ps-rsi-len" class="themed-number" type="number" value="14" /></label>
+          <label><span>RSI OB</span><input id="ps-rsi-ob" class="themed-number" type="number" value="79" /></label>
+          <label><span>RSI OS</span><input id="ps-rsi-os" class="themed-number" type="number" value="27" /></label>
+          <label><span>Pivot L</span><input id="ps-lb-l" class="themed-number" type="number" value="5" /></label>
+          <label><span>Pivot R</span><input id="ps-lb-r" class="themed-number" type="number" value="5" /></label>
+          <label><span>Range Low</span><input id="ps-range-low" class="themed-number" type="number" value="5" /></label>
+          <label><span>Range Up</span><input id="ps-range-up" class="themed-number" type="number" value="60" /></label>
+        </div>
+      </section>
+
+      <section class="glass" style="margin-top:10px;">
+        <h3 style="margin:0 0 6px;">Slots</h3>
+        <div id="pm-list" class="results"></div>
+      </section>
+    </main>
+
+    <script src="presets_manager.js" defer></script>
+    <button class="theme-switch theme-switch-floating" data-theme-toggle type="button">Theme</button>
+    <script src="theme_toggle.js" defer></script>
+  </body>
+  </html>

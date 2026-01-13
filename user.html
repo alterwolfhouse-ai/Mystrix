@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light">
+    <title>MystriX - User</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <script src="asset_picker.js"></script>
+</head>
+  <body class="has-dock" id="user-page">
+    <main class="hero" id="home" style="max-width:1100px; margin:auto;">
+      <h1><span class="quote">"</span>MystriX<span class="quote">"</span> - User Panel</h1>
+
+      <section class="glass" style="margin-top:10px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+          <label style="flex:1 1 260px; display:flex; flex-direction:column; gap:6px;">
+            <span>Symbol</span>
+            <input id="u-symbol" type="text" list="u-symbols" placeholder="BTC/USDT" style="min-width:220px" />
+            <datalist id="u-symbols"></datalist>
+          </label>
+          <button id="u-fav" class="cta" type="button">★ Favorite</button>
+          <span id="srv-status" class="status">Server: <span class="status-dot dot-off"></span> Offline</span>
+          <div style="margin-left:auto; display:flex; gap:8px;">
+            <button id="btn-login" class="cta" type="button">Login</button>
+            <button id="btn-logout" class="cta" type="button" style="display:none;">Logout</button>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:10px; align-items:flex-end;">
+          <label style="flex:1; display:flex; flex-direction:column; gap:6px;">
+            <span>Missing coin? Tell us</span>
+            <input id="u-missing" type="text" placeholder="e.g., NEW/USDT" />
+          </label>
+          <button id="u-suggest" class="cta" type="button">Submit</button>
+        </div>
+      </section>
+
+      <section id="u-chart" class="glass" style="margin-top:12px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button id="u-fetch" class="cta" type="button">Fetch Signal</button>
+          <button id="u-auto" class="cta" type="button">Start Auto</button>
+          <button id="u-alarm" class="cta" type="button">Alarm Off</button>
+          <p id="u-status" class="status"></p>
+        </div>
+        <div class="chart-wrap" style="margin-top:8px;">
+          <canvas id="u-canvas" width="1000" height="360" style="max-width:100%"></canvas>
+        </div>
+        <div id="u-log" class="results"></div>
+      </section>
+
+      <section class="glass" style="margin-top:12px;">
+        <h3 style="margin:0 0 6px;">Favorites</h3>
+        <div id="u-favs" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+      </section>
+
+      <section class="glass" style="margin-top:12px;">
+        <h3 style="margin:0 0 6px;">Backtest</h3>
+        <div class="form-grid">
+          <label><span>Start</span><input id="bt-start" type="date" /></label>
+          <label><span>End</span><input id="bt-end" type="date" /></label>
+        </div>
+        <div class="btn-row"><button id="bt-run" class="cta" type="button">Run Backtest</button><p id="bt-msg" class="status"></p></div>
+        <div id="bt-out" class="results"></div>
+      </section>
+    </main>
+
+    <div class="bottom-dock" role="contentinfo">
+      <div class="dock-inner">
+        <nav class="nav bottom-nav" aria-label="Primary">
+          <a href="index.html#home">Home</a>
+          <a href="user.html#home" class="active">User</a>
+          <a id="nav-admin" href="admin.html#home" style="display:none;">Admin</a>
+        </nav>
+        <div class="floorbar"><span class="floor-text">(c) <span class="year"></span> Wolf House. All rights reserved.</span></div>
+      </div>
+    </div>
+
+    <!-- Auth modal -->
+    <div id="auth-modal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:300;">
+      <div class="glass" style="width:min(92vw,420px); padding:18px;">
+        <h3 style="margin:0 0 8px;">Sign in</h3>
+        <div class="form-grid">
+          <label><span>Email</span><input id="auth-email" type="text" /></label>
+          <label><span>Password</span><input id="auth-pass" type="password" /></label>
+          <label><span>Name (signup)</span><input id="auth-name" type="text" /></label>
+        </div>
+        <div class="btn-row">
+          <button id="btn-do-login" class="cta" type="button">Login</button>
+          <button id="btn-do-signup" class="cta" type="button">Sign up</button>
+          <button id="btn-auth-close" class="cta" type="button">Close</button>
+        </div>
+        <p id="auth-msg" class="status"></p>
+      </div>
+    </div>
+
+    <script src="user.js"></script>
+    <button class="theme-switch theme-switch-floating" data-theme-toggle type="button">Theme</button>
+    <script src="theme_toggle.js" defer></script>
+  </body>
+  </html>
+

@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MystriX Concurrent Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="concurrent_lab.css?v=1.3" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body id="concurrent-page">
+    <a class="brand-pin" href="index.html" title="Home">
+      <img src="mystrix_logo.png" alt="MystriX by Wolf House" />
+      <div class="brand-globe" aria-hidden="true"></div>
+    </a>
+    <main class="concurrent-shell">
+      <header class="hero glass-card">
+        <div>
+          <h1>Concurrent Compounding Lab</h1>
+          <p>Experimental dashboard for multi-asset, cross-margin backtests with ML-filtered signals.</p>
+        </div>
+                <div class="hero-links">
+          <a href="magic_v2.html">Back to Lab</a>
+          <a href="live_mystrix+.html">MystriX+ Live</a>
+          <img src="mystrix_logo.png" alt="MystriX" class="hero-logo" />
+        </div>
+      </header>
+
+      <section class="glass-card control-panel">
+        <h2>Configuration</h2>
+        <div class="grid">
+          <label>Dataset Path
+            <input id="dataset-path" type="text" value="ml_pipeline/data/div_all_3m.csv" />
+          </label>
+          <label>Cache / Data Path
+            <div class="path-picker">
+              <input id="cache-path" type="text" value="cache_data" readonly />
+            </div>
+            <small class="muted">Using default local cache: cache_data (auto-created)</small>
+          </label>
+          <label>Model Path
+            <input id="model-path" type="text" value="ml_pipeline/models/ml_filter.pkl" />
+          </label>
+          <label>Timeframe
+            <select id="timeframe">
+              <option value="3m" selected>3m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="1h">1h</option>
+            </select>
+          </label>
+          <label>Start Date
+            <input id="start-date" type="date" />
+          </label>
+          <label>End Date
+            <input id="end-date" type="date" />
+          </label>
+          <label>ML Threshold
+            <span class="range-input">
+              <input id="threshold" type="range" min="0.5" max="0.95" step="0.01" value="0.65" />
+              <span id="threshold-val">0.65</span>
+            </span>
+          </label>
+          <label>Equity / Trade (50% default)
+            <span class="range-input">
+              <input id="equity-pct" type="range" min="0.05" max="1" step="0.05" value="0.5" />
+              <span id="equity-pct-val">50%</span>
+            </span>
+          </label>
+          <label>Initial Equity
+            <input id="initial-equity" type="number" value="10000" min="1000" step="500" />
+          </label>
+          <label>Fee (bps)
+            <input id="fee-bps" type="number" value="5" min="0" step="1" />
+          </label>
+          <label>Max Concurrent Positions
+            <input id="max-positions" type="number" value="20" min="1" max="50" />
+          </label>
+        </div>
+        <div class="asset-picker">
+          <p>Select assets (max 30). Leave empty to auto-pick the most active symbols.</p>
+          <div class="asset-adder">
+            <input id="asset-input" type="text" placeholder="Add custom symbol e.g. LTC/USDT" list="asset-suggestions" />
+            <button id="asset-add" type="button" class="cta secondary">Add</button>
+            <button id="asset-select-all" type="button" class="cta tertiary">Select all</button>
+            <button id="asset-clear" type="button" class="cta tertiary">Clear</button>
+            <span id="asset-count" class="muted"></span>
+          </div>
+          <datalist id="asset-suggestions"></datalist>
+          <div id="asset-grid" class="asset-grid"></div>
+          <p class="muted" style="margin-top:6px;">Data fetch uses Bybit via CCXT (throttled per symbol). Large ranges are fetched sequentially to avoid rate limits.</p>
+          <div class="fetch-row">
+            <button id="fetch-btn" class="cta secondary" type="button">Fetch Selected Data</button>
+            <span id="fetch-status" class="status-pill idle">Not fetched</span>
+          </div>
+          <div class="feed-log" id="fetch-log" aria-live="polite">
+            <div class="feed-line muted">Awaiting fetch...</div>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="run-btn" class="cta">Run Concurrent Backtest</button>
+          <span id="run-status" class="status-pill idle">Idle</span>
+        </div>
+      </section>
+
+      <section class="glass-card stats-card">
+        <h2>Summary</h2>
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat">
+            <span>Total Return</span>
+            <strong id="stat-return">--</strong>
+          </div>
+          <div class="stat">
+            <span>CAGR</span>
+            <strong id="stat-cagr">--</strong>
+          </div>
+          <div class="stat">
+            <span>Max Drawdown</span>
+            <strong id="stat-dd">--</strong>
+          </div>
+          <div class="stat">
+            <span>Win Rate</span>
+            <strong id="stat-win">--</strong>
+          </div>
+          <div class="stat">
+            <span>Trades</span>
+            <strong id="stat-trades">--</strong>
+          </div>
+          <div class="stat">
+            <span>Max Concurrency</span>
+            <strong id="stat-conc">--</strong>
+          </div>
+        </div>
+        <p class="stat-note" id="stat-note">Awaiting run...</p>
+      </section>
+
+      <section class="glass-card chart-card">
+        <div class="chart-head">
+          <h2>Equity Curve</h2>
+          <small id="chart-caption">--</small>
+          <div class="signal-actions">
+            <button id="export-concurrent-csv" type="button">Export Trades CSV</button>
+          </div>
+        </div>
+        <canvas id="equity-chart" height="120"></canvas>
+      </section>
+
+      <section class="flex-row">
+        <div class="glass-card table-card">
+          <h3>Symbol Breakdown</h3>
+          <div class="table-wrap">
+            <table id="symbol-table">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Trades</th>
+                  <th>Win %</th>
+                  <th>PNL ($)</th>
+                  <th>Avg Minutes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5" class="empty">No data yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="glass-card table-card">
+          <h3>Recent Trades</h3>
+          <div class="table-wrap">
+            <table id="trade-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Symbol</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>Entry Px</th>
+                  <th>Exit Px</th>
+                  <th>Trade Size</th>
+                  <th>Ret %</th>
+                  <th>PNL ($)</th>
+                  <th>Dir</th>
+                  <th>Prob</th>
+                  <th>Equity Before</th>
+                  <th>Equity After</th>
+                  <th>Hold (min)</th>
+                  <th>Fee</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="16" class="empty">Run a backtest to see trades.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+    <button class="theme-switch theme-switch-floating" data-theme-toggle type="button">Theme</button>
+    <script src="theme_toggle.js" defer></script>
+    <script src="concurrent_lab.js?v=1.3" defer></script>
+  </body>
+</html>
+
+

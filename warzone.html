@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Warzone - Analyst Chat Sandbox</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      body { background-color: transparent; }
+      .wrap { max-width: 960px; margin: 32px auto; padding: 0 16px; }
+      .glass.panel { padding: 16px; }
+      h1 { font-size: 20px; margin: 0 0 12px; color: var(--text); }
+      .row { display:flex; gap:12px; flex-wrap:wrap; }
+      .col { flex:1 1 220px; }
+      label { display:block; font-size:12px; opacity:0.8; margin-bottom:6px; }
+      input, select, textarea {
+        width:100%;
+        background: rgba(255,255,255,0.06);
+        color: var(--text);
+        border:1px solid rgba(255,255,255,0.18);
+        border-radius:8px;
+        padding:8px 10px;
+        outline:none;
+      }
+      textarea { min-height: 110px; resize: vertical; }
+      .btn {
+        background: linear-gradient(180deg, var(--cta-start) 0%, var(--cta-end) 100%);
+        color: var(--cta-text);
+        border:none;
+        border-radius:10px;
+        padding:10px 14px;
+        cursor:pointer;
+        font-weight: 700;
+      }
+      .btn[disabled] { opacity:0.6; cursor:not-allowed; }
+      .toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .chat { padding: 16px; max-height: 60vh; overflow:auto; display:flex; flex-direction:column; gap:12px; }
+      .bubble { padding:12px 14px; border-radius:12px; max-width: 90%; white-space: pre-wrap; }
+      .me { align-self:flex-end; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); }
+      .bot { align-self:flex-start; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); }
+      .meta { font-size: 11px; opacity:0.7; margin-top:6px; }
+    </style>
+    <script>
+      let SESSION_ID = null;
+
+      async function startSession(ev){
+        ev?.preventDefault();
+        const symbols = document.getElementById('symbols').value.trim().split(',').map(s=>s.trim()).filter(Boolean);
+        const timeframe = document.getElementById('tf').value;
+        const months_market = 2;
+        const years_news = 2;
+        const include_news = (document.getElementById('news').value === 'true');
+        const lookback_bars = 1200;
+        const base = location.origin;
+        const btn = document.getElementById('start');
+        btn.disabled = true; btn.textContent = 'Preparing...';
+        try{
+          const res = await fetch(base + '/api/wizard/session/start', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbols, timeframe, months_market, years_news, include_news, lookback_bars})
+          });
+          if(!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          SESSION_ID = data.session_id;
+          document.getElementById('sessionStatus').textContent = 'Ready (MystriX context loaded)';
+        }catch(err){
+          alert('Failed to start session: ' + (err?.message||err));
+        }finally{
+          btn.disabled = false; btn.textContent = 'Start Session';
+        }
+      }
+
+      async function sendChat(ev){
+        ev?.preventDefault();
+        if(!SESSION_ID){ await startSession(); if(!SESSION_ID) return; }
+        const msg = document.getElementById('message').value.trim();
+        if(!msg) return;
+
+        const chat = document.getElementById('chat');
+        const me = document.createElement('div'); me.className='bubble me'; me.textContent = msg; chat.appendChild(me); chat.scrollTop = chat.scrollHeight;
+        document.getElementById('send').disabled = true;
+
+        try{
+          const base = location.origin;
+          const res = await fetch(base + '/api/wizard/session/message',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({session_id: SESSION_ID, message: msg})
+          });
+          if(!res.ok){
+            const txt = await res.text(); throw new Error(txt||('HTTP '+res.status));
+          }
+          const data = await res.json();
+          const bot = document.createElement('div'); bot.className='bubble bot'; bot.innerHTML = renderMd(data.report_markdown || '(no content)'); chat.appendChild(bot);
+          const meta = document.createElement('div'); meta.className='meta'; meta.textContent = new Date(data.generated_at).toLocaleString(); chat.appendChild(meta);
+          chat.scrollTop = chat.scrollHeight;
+        }catch(err){
+          const bot = document.createElement('div'); bot.className='bubble bot'; bot.textContent = 'Error: '+(err?.message||err); chat.appendChild(bot); chat.scrollTop = chat.scrollHeight;
+        }finally{
+          document.getElementById('send').disabled = false;
+          document.getElementById('message').value='';
+          document.getElementById('message').focus();
+        }
+      }
+      window.addEventListener('DOMContentLoaded',()=>{
+        const form = document.getElementById('form');
+        const txt = document.getElementById('message');
+        document.getElementById('send').addEventListener('click', sendChat);
+        form.addEventListener('submit', sendChat);
+        document.getElementById('start').addEventListener('click', startSession);
+        txt.addEventListener('keydown',(e)=>{ if (e.ctrlKey && e.key === 'Enter') { sendChat(e); }});
+        setTimeout(()=>{ if(!SESSION_ID) startSession(); }, 2000);
+      });
+
+      function renderMd(src){
+        if(!src) return '';
+        let html = src
+          .replace(/^###\s*(.*)$/gm,'<h4>$1</h4>')
+          .replace(/^##\s*(.*)$/gm,'<h3>$1</h3>')
+          .replace(/^#\s*(.*)$/gm,'<h2>$1</h2>')
+          .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+        html = html.replace(/^(?:- |\* )(.*)$/gm,'<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>\n?)+/g, m=>'<ul>'+m+'</ul>');
+        html = html.split(/\n{2,}/).map(p=>(/<h\d|<ul|<li/.test(p)?p:`<p>${p}</p>`)).join('\n');
+        return html;
+      }
+    </script>
+  </head>
+  <body class="has-dock">
+    <div class="wrap">
+      <div class="glass panel">
+        <h1>Warzone - Analyst Chat Sandbox</h1>
+        <div class="row" style="margin-bottom:10px; align-items:flex-end;">
+          <div class="col"><label>Symbols (comma-separated)</label><input id="symbols" value="BTC/USDT" /></div>
+          <div class="col"><label>Timeframe</label>
+            <select id="tf"><option>1m</option><option selected>3m</option><option>5m</option><option>15m</option><option>1h</option><option>4h</option><option>1d</option></select>
+          </div>
+          <div class="col"><label>Include News</label>
+            <select id="news"><option value="true" selected>Yes</option><option value="false">No</option></select>
+          </div>
+          <div class="col" style="max-width:220px;">
+            <button id="start" type="button" class="btn" style="width:100%">Start Session</button>
+            <div id="sessionStatus" class="meta" title="Session status">Idle</div>
+          </div>
+        </div>
+        <form id="form">
+          <div class="row" style="margin-top:12px;">
+            <div class="col"><label>Words Min</label><input id="wmin" type="number" value="500" /></div>
+            <div class="col"><label>Words Max</label><input id="wmax" type="number" value="1000" /></div>
+          </div>
+          <div style="margin:12px 0;">
+            <label>Request</label>
+            <textarea id="message" placeholder="Ask for a detailed market and technical analysis with scenarios and invalidation cues..."></textarea>
+          </div>
+          <div class="toolbar">
+            <button id="send" type="submit" class="btn">Generate Report</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="glass" style="margin-top:16px;">
+        <div id="chat" class="chat"></div>
+      </div>
+    </div>
+    <button class="theme-switch theme-switch-floating" data-theme-toggle type="button">Theme</button>
+    <script src="theme_toggle.js" defer></script>
+  </body>
+</html>

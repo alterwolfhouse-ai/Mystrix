@@ -1,0 +1,75 @@
+MystriX Rebuild – Project Notes (21-Nov-2025)
+============================================
+
+Overview
+- Core MystriX (RSI/divergence rule engine) + MystriX+ (ML filter) + Concurrent Lab (multi-asset backtester) + Live console + Autotrader setup.
+- Unified theme system: two skins (core Glass/Neon, Experiment). Toggle via floating button (localStorage key: mystrix_theme). Product gating stored in localStorage key: product (default MystriX).
+
+How to run
+- From repo root: `python server.py` (uses uvicorn, serves /static/*).
+- Homepage/Lab: http://127.0.0.1:8000/static/magic_v2.html
+- Concurrent Lab: http://127.0.0.1:8000/static/concurrent_lab.html
+- MystriX+ live: http://127.0.0.1:8000/static/live_mystrix+.html
+- Theme toggle appears on all major pages; MystriX+ button now redirects only on click (no auto-redirect on load).
+
+Key pages / flows
+- magic_v2.html: entry, product switch, backtester (legacy hedge/short/long).
+- concurrent_lab.html: multi-asset concurrent backtester with per-asset ML filter.
+- experiment_lab.html: legacy experiment runner (still available).
+- live_mystrix+.html: live console (signals, ML filter, autotrader hook).
+- autotrader_setup.html: configure API keys/exchange/margin mode; fetches public IP for allowlist.
+
+Theme system
+- theme_toggle.js sets documentElement dataset theme: core (Glass/Neon) or experiment (Lab vibe).
+- Styles wired in styles.css, experiment_lab.css, live_mystrix+.css, concurrent_lab.css.
+
+Data & ML
+- Models: ml_pipeline/models/ml_filter.pkl (logistic regression baseline). Data: ml_pipeline/data/.
+- Dataset builder: ml_pipeline/dataset_builder.py; feature_engineering.py; divergence strength metrics included.
+- Live scan: /live/scan uses ML filter on incoming signals.
+
+Backtesting
+- Legacy single-symbol backtest: /backtest (called from magic_v2).
+- Concurrent backtest: /backtest/concurrent (from concurrent_lab.html). Config includes threshold, equity_pct, max_positions, dataset path, symbols, start/end.
+- Output includes equity curve, per-symbol stats, trades table (entry/exit px, size, ret %, pnl $, prob, divergence side, status).
+
+Concurrent dataset fetch (resilient)
+- Endpoint: /datasets/build_concurrent
+- Limits: max 30 symbols per request.
+- Behavior: retries each symbol up to 3x; backs off on rate-limit/429 (10s * attempt); small throttle (0.35s) between symbols.
+- Returns: ok, path, rows, per_symbol, failed[], partial flag, messages[].
+- Frontend feed log (fetch-log) shows per-symbol attempts, retries, failures; status pill shows partial if some failed.
+- Note: Uses CCXT (Bybit configured in code); log will show upstream URL when rate limited. Can rerun with only failed symbols to resume.
+
+Asset picker (Concurrent Lab)
+- Up to 30 assets; preset list extended (BTC, ETH, BNB, SOL, XRP, ADA, DOGE, MATIC, DOT, AVAX, LTC, LINK, NEAR, ATOM, APT, ARB, OP, SUI, PEPE, SHIB, XLM, FIL, INJ, ETC, ALGO, AAVE, SAND, MANA, EGLD, FTM).
+- Add custom via datalist suggestions; Select all / Clear; live selected count.
+
+Autotrader / balances
+- /autotrader/balance supports Binance/Bybit; Binance futures cross with multi-asset conversion to USDT (uses tickers to price non-USDT balances).
+- Public IP endpoint: /autotrader/public_ip for allowlisting.
+
+Routing / gating
+- script_v2_es5.js: gates products; MystriX+ redirect only on click. Default product on load is MystriX (ignores stored mystrixplus to avoid forced redirect).
+- magic_v2 uses script_v2_es5.js?v= cache-busted after changes.
+
+Logging / troubleshooting
+- Server logs: server.out.log / console. Health: /healthz.
+- Fetch issues: check feed log in Concurrent Lab (messages from backend). Partial fetch shows failed list; rerun with those symbols or narrow date range.
+- Large ranges: currently sequential; consider chunking by time if still rate limited.
+
+File map (hot spots)
+- server.py: API endpoints, dataset build retries, backtests, live scan, demo trade.
+- magic_v2.html, script_v2_es5.js: Lab UI, product gating, backtester.
+- concurrent_lab.html/.css/.js: concurrent backtester UI, feed log, asset picker.
+- live_mystrix+.html/.css/.js: live console with signals/ML filter/autotrader log.
+- theme_toggle.js: global theme toggler.
+- ml_pipeline/: data, models, builder, feature engineering.
+
+Known warnings
+- Pandas FutureWarnings in data.py/dataset_builder.py/feature_engineering.py about date parsing and pct_change fill_method; currently harmless but can be silenced by setting dayfirst and fill_method=None.
+
+Next steps (optional)
+- Add time-chunked fetch for very long histories to further reduce rate limits.
+- Auto-resume: store failed[] and retry only those on next click.
+- Add verbose server logging toggle for dataset builds to catch upstream HTTP errors.

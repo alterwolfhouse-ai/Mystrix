@@ -1,0 +1,36 @@
+# Core settings
+symbols: ["BTC/USDT", "ETH/USDT"]
+backtest_start: "2024-01-01"
+backtest_end:   "2025-10-20"
+initial_capital: 10000.0
+fee_bps: 5           # 0.05% per side
+
+# Pine-parity params
+rsi_length: 14
+rsi_overbought: 81
+rsi_oversold: 21
+lb_left: 5
+lb_right: 5
+range_low: 5
+range_up: 60
+max_wait_bars: 25
+pct_stop: 0.018
+cooldown_3m_bars: 20
+
+# Trend/Chop
+ema_short: 12
+ema_long: 26
+chop_length: 14
+
+# Risk & filters
+use_dxy_filter: true
+dxy_wow_threshold: 0.02
+bb_period: 20
+bb_std: 2.0
+base_risk_pct: 0.005
+kelly_fraction: 0.25
+
+# Data
+timeframe_hist: "1h"  # base fetch; resample down to 3m
+use_synthetic_if_ccxt_fails: true
+

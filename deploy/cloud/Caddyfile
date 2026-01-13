@@ -1,0 +1,16 @@
+{
+  email you@example.com
+  # optional: acme_ca https://acme.zerossl.com/v2/DV90
+}
+
+{$SITE_HOST} {
+  encode zstd gzip
+
+  @api path /healthz /symbols /signals /pine/* /backtest /restart /static/*
+  reverse_proxy @api app:8000
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  }
+}
+

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MystriX+ Experiment Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="experiment_lab.css?v=1.1" />
+  </head>
+  <body id="experiment-lab">
+    <a class="brand-pin" href="index.html" title="Home">
+      <img src="mystrix_logo.png" alt="MystriX by Wolf House" />
+      <div class="brand-globe" aria-hidden="true"></div>
+    </a>
+    <main class="exp-shell">
+      <header class="exp-hero glass-card">
+        <h1>MystriX+ Divergence Lab</h1>
+        <p>
+          Experiment arm with the RSI gate removed. Every divergence is streamed into the ML filter
+          so you can judge confidence, thresholds and risk multipliers without touching the legacy presets.
+        </p>
+        <div class="nav-links">
+          <a href="magic_v2.html">Back to Lab</a>
+          <a href="magic.html">Classic UI</a>
+          <a href="experiment_lab.html" aria-current="page">Experiment</a>
+        </div>
+      </header>
+
+      <section class="exp-cards">
+        <div class="glass-card">
+          <div class="stat-label">Dataset Rows</div>
+          <div id="stat-total" class="stat-value">--</div>
+          <div class="card-note">All divergences currently cached.</div>
+        </div>
+        <div class="glass-card">
+          <div class="stat-label">Good Samples</div>
+          <div id="stat-good" class="stat-value">--</div>
+          <div class="card-note">Hit +1.5% before -3%.</div>
+        </div>
+        <div class="glass-card">
+          <div class="stat-label">Bad Samples</div>
+          <div id="stat-bad" class="stat-value">--</div>
+          <div class="card-note">Failed ML positives.</div>
+        </div>
+        <div class="glass-card">
+          <div class="stat-label">Dataset Updated</div>
+          <div id="stat-updated" class="stat-value" style="font-size:18px;">--</div>
+          <div class="card-note" id="stat-dataset">ml_pipeline/data/div_all_3m.csv</div>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <h2>Run Divergence Stream</h2>
+        <div class="exp-status-panel">
+          <div id="exp-status-indicator" class="exp-status-indicator state-idle" role="status" aria-live="polite">
+            <span class="dot"></span>
+            <span class="label">Idle</span>
+          </div>
+          <div id="exp-feed" class="exp-feed">
+            <div class="feed-entry info"><span class="msg">Awaiting command...</span><span class="time"></span></div>
+          </div>
+        </div>
+        <div class="export-row">
+          <button id="exp-export-feed" class="cta secondary" type="button">Export Feed CSV</button>
+        </div>
+        <div class="form-grid">
+          <label>Symbols (comma separated)
+            <input id="exp-symbols" type="text" value="BTC/USDT,ETH/USDT,SOL/USDT,BNB/USDT" />
+          </label>
+          <label>Start Date
+            <input id="exp-start" type="date" value="2020-01-01" />
+          </label>
+          <label>End Date
+            <input id="exp-end" type="date" />
+          </label>
+          <label>Timeframe
+            <select id="exp-timeframe">
+              <option value="1m">1m</option>
+              <option value="3m" selected>3m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="30m">30m</option>
+              <option value="1h">1h</option>
+            </select>
+          </label>
+          <label>Initial Capital ($)
+            <input id="exp-capital" type="number" value="10000" min="1000" step="1000" />
+          </label>
+          <label>Divergence Stop (%)
+            <input id="exp-stop" type="number" value="3" min="0.5" step="0.1" />
+          </label>
+          <label>Divergence Target (%)
+            <input id="exp-target" type="number" value="1.5" min="0.5" step="0.1" />
+          </label>
+          <label>Dataset Path
+            <input id="exp-dataset" type="text" value="ml_pipeline/data/div_all_3m.csv" />
+          </label>
+          <label>Model Path
+            <input id="exp-model" type="text" value="ml_pipeline/models/ml_filter.pkl" />
+          </label>
+        </div>
+        <div class="form-grid" style="margin-top:12px;">
+          <label>ML Confidence Threshold
+            <span class="range-wrap">
+              <input id="exp-threshold" type="range" min="0.55" max="0.95" step="0.01" value="0.65" />
+              <span id="exp-threshold-val" class="badge">0.65</span>
+            </span>
+          </label>
+          <label>Equity Risk per Trade
+            <span class="range-wrap">
+              <input id="exp-risk" type="range" min="0.005" max="1" step="0.005" value="0.02" />
+              <span id="exp-risk-val" class="badge">2.0%</span>
+            </span>
+          </label>
+          <label>Holding Minutes Hint
+            <input id="exp-hold" type="number" value="0" min="0" step="5" />
+          </label>
+          <label>Log File Name (optional)
+            <input id="exp-log-name" type="text" placeholder="auto" />
+          </label>
+        </div>
+        <div class="btn-row" style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap;">
+          <button id="fetch-dataset" class="cta-primary" type="button">Fetch / Update Dataset</button>
+          <button id="run-experiment" class="cta-primary" type="button">Run Experiment</button>
+          <button id="download-log" class="cta-ghost" type="button" disabled>Download last log</button>
+          <button id="refresh-stats" class="cta-ghost" type="button">Refresh dataset stats</button>
+        </div>
+        <p id="exp-status" class="exp-status"></p>
+      </section>
+
+      <section class="glass-card">
+        <h2>ML Filter Snapshot</h2>
+        <div class="summary-grid" id="summary-grid">
+          <div class="summary-card">
+            <div class="stat-label">Trades Taken</div>
+            <div id="summary-trades" class="stat-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div class="stat-label">Win Rate</div>
+            <div id="summary-win" class="stat-value">0%</div>
+          </div>
+          <div class="summary-card">
+            <div class="stat-label">Final Equity</div>
+            <div id="summary-equity" class="stat-value"></div>
+          </div>
+          <div class="summary-card">
+            <div class="stat-label">Return</div>
+            <div id="summary-return" class="stat-value">0%</div>
+          </div>
+          <div class="summary-card">
+            <div class="stat-label">Max Drawdown</div>
+            <div id="summary-dd" class="stat-value">0%</div>
+          </div>
+          <div class="summary-card">
+            <div class="stat-label">Bull Divergences</div>
+            <div id="summary-bull" class="stat-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div class="stat-label">Bear Divergences</div>
+            <div id="summary-bear" class="stat-value">0</div>
+          </div>
+        </div>
+        <p class="card-note">Numbers refresh every time you run the experiment. Use the preview below to inspect the latest stream.</p>
+      </section>
+
+      <section class="glass-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Symbol</th>
+                <th>Entry</th>
+                <th>Exit</th>
+                <th>Entry Px</th>
+                <th>Exit Px</th>
+                <th>Trade Size</th>
+                <th>Ret %</th>
+                <th>PNL ($)</th>
+                <th>Divergence</th>
+                <th>Confidence</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="preview-body">
+              <tr><td colspan="12" style="text-align:center;opacity:.6;">Run the experiment to see trades.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="glass-card neon-charts">
+        <h2>Neon Equity Maps</h2>
+        <div class="chart-grid">
+          <div class="chart-card">
+            <div class="chart-title">Combined Curve</div>
+            <canvas id="chart-combined" width="360" height="200"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Bull Divergences</div>
+            <canvas id="chart-bull" width="360" height="200"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Bear Divergences</div>
+            <canvas id="chart-bear" width="360" height="200"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <h3 style="margin-top:0;">Symbol Breakdown</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Symbol</th><th>Rows</th><th>Good</th><th>Bad</th></tr></thead>
+            <tbody id="symbol-stats">
+              <tr><td colspan="4" style="text-align:center;opacity:.6;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <aside id="notify-panel" class="notify-panel glass-card">
+      <div class="notify-header">
+        <span>Notifications</span>
+        <span class="notify-dot"></span>
+      </div>
+      <div id="notify-list" class="notify-list">
+        <div class="notify-entry info"><span>Lab booted and waiting.</span></div>
+      </div>
+    </aside>
+    <script src="experiment_lab.js?v=1.1" defer></script>
+  </body>
+</html>
+

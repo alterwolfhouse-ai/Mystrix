@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>MystriX - Admin</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="has-dock" id="admin-page">
+    <main class="hero" id="home" style="max-width:1100px; margin:auto;">
+      <h1>Admin Dashboard</h1>
+
+      <section id="magic-run" class="glass">
+        <h2 style="margin-top:0; font-weight:600; font-size:20px; letter-spacing:1px;">Local Backtester</h2>
+        <p id="srv-status" class="status">API: <span class="status-dot dot-off"></span> Not running</p>
+
+        <div class="codebox">
+          <div class="codebox-title">Start the API (first time installs deps)</div>
+          <pre id="cmd-api-win">python -m venv .venv; .\.venv\Scripts\Activate.ps1; pip install -U pip; pip install -r requirements.txt; python server.py</pre>
+          <button class="cta copy" data-target="cmd-api-win">Copy</button>
+        </div>
+        <div class="codebox">
+          <div class="codebox-title">macOS/Linux</div>
+          <pre id="cmd-api-unix">python -m venv .venv && source .venv/bin/activate && pip install -U pip && pip install -r requirements.txt && python server.py</pre>
+          <button class="cta copy" data-target="cmd-api-unix">Copy</button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Symbols (comma-separated)</span>
+            <input id="bt-symbols" type="text" value="BTC/USDT,ETH/USDT" />
+          </label>
+          <label>
+            <span>Start</span>
+            <input id="bt-start" type="date" />
+          </label>
+          <label>
+            <span>End</span>
+            <input id="bt-end" type="date" />
+          </label>
+          <label>
+            <span>Timeframe</span>
+            <select id="bt-tf">
+              <option value="3m" selected>3m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="1h">1h</option>
+            </select>
+          </label>
+          <label>
+            <span>Engine</span>
+            <select id="bt-engine">
+              <option value="long" selected>Long</option>
+              <option value="short">Short</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="btn-row" id="preset-controls" style="margin-top:6px; gap:8px; align-items:center;">
+          <span style="opacity:.8;font-size:12px;">Preset:</span>
+          <button type="button" class="cta" id="preset-bull">Bull</button>
+          <button type="button" class="cta" id="preset-bear">Bear</button>
+          <button type="button" class="cta" id="preset-chop">Chop</button>
+          <button type="button" class="cta" id="preset-save" style="margin-left:12px;">Save Preset</button>
+          <span id="preset-status" class="status" style="margin-left:8px;"></span>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>RSI Length</span>
+            <input id="bt-rsi-length" type="number" class="themed-number" value="14" min="1" />
+          </label>
+          <label>
+            <span>RSI Overbought</span>
+            <input id="bt-rsi-ob" type="number" class="themed-number" value="79" min="0" max="100" />
+          </label>
+          <label>
+            <span>RSI Oversold</span>
+            <input id="bt-rsi-os" type="number" class="themed-number" value="27" min="0" max="100" />
+          </label>
+          <label>
+            <span>Pivot Left</span>
+            <input id="bt-lb-left" type="number" class="themed-number" value="5" min="1" />
+          </label>
+          <label>
+            <span>Pivot Right</span>
+            <input id="bt-lb-right" type="number" class="themed-number" value="5" min="1" />
+          </label>
+          <label>
+            <span>Range Lower</span>
+            <input id="bt-range-low" type="number" class="themed-number" value="5" min="0" />
+          </label>
+          <label>
+            <span>Range Upper</span>
+            <input id="bt-range-up" type="number" class="themed-number" value="60" min="1" />
+          </label>
+          <label>
+            <span>Percent Stop (%)</span>
+            <input id="bt-pct-stop" type="number" class="themed-number" value="1.8" min="0" step="0.1" />
+          </label>
+          <label>
+            <span>Max Wait Bars</span>
+            <input id="bt-max-wait" type="number" class="themed-number" value="25" min="1" />
+          </label>
+          <label>
+            <span>Cooldown Enabled</span>
+            <input id="bt-cooldown-en" type="checkbox" checked />
+          </label>
+          <label>
+            <span>Cooldown Bars</span>
+            <input id="bt-cooldown" type="number" class="themed-number" value="15" min="0" />
+          </label>
+          <label>
+            <span>Initial Capital</span>
+            <input id="bt-initial" type="number" class="themed-number" value="10000" min="0" step="100" />
+          </label>
+          <label>
+            <span>Risk per trade (%)</span>
+            <input id="bt-risk-pct" type="number" class="themed-number" value="10" min="0" step="0.1" />
+          </label>
+        </div>
+
+        <section class="glass" style="margin-top:10px;">
+          <h3 style="margin:0 0 8px; display:flex; align-items:center; gap:10px;">HTF Gate
+            <label class="switch"><input id="bt-htf-en" type="checkbox" checked /><span class="slider"></span></label>
+          </h3>
+          <div class="form-grid">
+            <label><span>HTF Timeframe</span>
+              <select id="bt-htf-tf">
+                <option value="30m" selected>30m</option>
+                <option value="15m">15m</option>
+                <option value="1h">1h</option>
+              </select>
+            </label>
+            <label><span>HTF Stop (%)</span>
+              <input id="bt-htf-stop" type="number" class="themed-number" value="20" min="1" step="1" />
+            </label>
+            <label><span>RSI Length (HTF)</span>
+              <input id="htf-rsi-length" type="number" class="themed-number" value="14" min="1" />
+            </label>
+            <label><span>RSI Overbought (HTF)</span>
+              <input id="htf-rsi-ob" type="number" class="themed-number" value="79" min="0" max="100" />
+            </label>
+            <label><span>RSI Oversold (HTF)</span>
+              <input id="htf-rsi-os" type="number" class="themed-number" value="27" min="0" max="100" />
+            </label>
+            <label><span>Pivot Left (HTF)</span>
+              <input id="htf-lb-left" type="number" class="themed-number" value="5" min="1" />
+            </label>
+            <label><span>Pivot Right (HTF)</span>
+              <input id="htf-lb-right" type="number" class="themed-number" value="5" min="1" />
+            </label>
+            <label><span>Range Lower (HTF)</span>
+              <input id="htf-range-low" type="number" class="themed-number" value="5" min="0" />
+            </label>
+            <label><span>Range Upper (HTF)</span>
+              <input id="htf-range-up" type="number" class="themed-number" value="60" min="1" />
+            </label>
+            <label><span>Max Wait Bars (HTF)</span>
+              <input id="htf-max-wait" type="number" class="themed-number" value="25" min="1" />
+            </label>
+          </div>
+        </section>
+
+        <section class="glass" style="margin-top:10px;">
+          <h3 style="margin:0 0 8px; display:flex; align-items:center; gap:10px;">8h Gate (cross-sectional)
+            <label class="switch"><input id="gate-enable" type="checkbox" /><span class="slider"></span></label>
+          </h3>
+          <div class="form-grid">
+            <label><span>Gate Base TF</span>
+              <select id="gate-base-tf">
+                <option value="1h" selected>1h</option>
+                <option value="4h">4h</option>
+              </select>
+            </label>
+            <label><span>VROC Span (8h EMA)</span>
+              <input id="gate-vroc-span" type="number" class="themed-number" value="8" min="1" step="1" />
+            </label>
+            <label><span>Gate Threshold (0..1)</span>
+              <input id="gate-threshold" type="number" class="themed-number" value="0.65" min="0" max="1" step="0.01" />
+            </label>
+          </div>
+        </section>
+
+        <div class="btn-row">
+          <button id="run-backtest" class="cta" type="button">Run Backtest</button>
+          <div id="bt-progress" style="display:none; width:28px; height:28px; border-radius:50%; background: conic-gradient(var(--accent,#7c4dff) 0deg, rgba(255,255,255,0.08) 0); position:relative;">
+            <div style="position:absolute; inset:4px; background:rgba(0,0,0,0.25); border-radius:50%;"></div>
+            <span id="bt-progress-label" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:#ddd;">0%</span>
+          </div>
+          <button id="restart" class="cta" type="button">Restart API</button>
+          <button id="recheck" class="cta" type="button">Recheck API</button>
+        </div>
+        <div id="results" class="results"></div>
+      </section>
+
+      <section id="gate" class="glass">
+        <h2 style="margin-top:0; font-weight:600; font-size:20px; letter-spacing:1px;">Gate Snapshot</h2>
+        <div class="btn-row"><button id="gate-refresh" class="cta" type="button">Refresh Snapshot</button></div>
+        <div id="gate-out" class="results"></div>
+      </section>
+
+      <section id="magic-live" class="glass">
+        <h2 style="margin-top:0; font-weight:600; font-size:20px; letter-spacing:1px;">Live Signals</h2>
+        <p class="status">Scan the market now or auto-refresh.</p>
+        <div class="form-grid">
+          <label>
+            <span>Symbols (comma-separated)</span>
+            <input id="ls-symbols" type="text" value="BTC/USDT,ETH/USDT" />
+          </label>
+          <label>
+            <span>Timeframe</span>
+            <select id="ls-tf">
+              <option value="3m" selected>3m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="1h">1h</option>
+            </select>
+          </label>
+          <label>
+            <span>Auto-refresh (sec)</span>
+            <input id="ls-interval" class="themed-number" type="number" value="30" min="5" step="5" />
+          </label>
+        </div>
+        <div class="btn-row">
+          <button id="ls-scan" class="cta" type="button">Scan Now</button>
+          <button id="ls-auto" class="cta" type="button">Start Auto</button>
+        </div>
+        <div id="signals" class="results"></div>
+        <div class="form-grid">
+          <label>
+            <span>View logs for</span>
+            <select id="ls-symbol-list"></select>
+          </label>
+        </div>
+        <div id="ls-logs" class="results"></div>
+      </section>
+
+      <section id="magic-chart" class="glass">
+        <h2 style="margin-top:0; font-weight:600; font-size:20px; letter-spacing:1px;">Signal Chart (Pine Long)</h2>
+        <div class="form-grid">
+          <label>
+            <span>Symbol</span>
+            <input id="sc-symbol" type="text" value="BTC/USDT" />
+          </label>
+          <label>
+            <span>Timeframe</span>
+            <select id="sc-tf">
+              <option value="3m" selected>3m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="1h">1h</option>
+            </select>
+          </label>
+          <label>
+            <span>Bars</span>
+            <input id="sc-bars" type="number" class="themed-number" value="400" min="100" step="50" />
+          </label>
+        </div>
+        <div class="btn-row">
+          <button id="sc-fetch" class="cta" type="button">Fetch Signal</button>
+          <button id="sc-auto" class="cta" type="button">Start Auto</button>
+        </div>
+        <p id="sc-status" class="status"></p>
+        <div style="width:100%; overflow:auto;">
+          <canvas id="sig-canvas" width="1000" height="340" style="max-width:100%; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px;"></canvas>
+        </div>
+        <div id="sc-log" class="results"></div>
+      </section>
+
+      <section class="glass">
+        <div class="btn-row"><button id="a-refresh" class="cta" type="button">Refresh</button></div>
+        <h3 style="margin:10px 0 6px;">Users</h3>
+        <div id="a-users" class="results"></div>
+        <h3 style="margin:10px 0 6px;">Suggestions</h3>
+        <div id="a-sug" class="results"></div>
+        <p id="a-msg" class="status"></p>
+      </section>
+
+      <section class="glass" style="margin-top:12px;">
+        <h3 style="margin:0 0 6px;">Engine Defaults</h3>
+        <div class="form-grid">
+          <label><span>History Timeframe (locked for users)</span>
+            <input id="def-tf" type="text" value="3m" />
+          </label>
+          <label style="grid-column:1/-1"><span>Overrides (JSON)</span>
+            <textarea id="def-json" style="width:100%; min-height:120px; background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 13px;"></textarea>
+          </label>
+        </div>
+        <div class="btn-row">
+          <button id="def-load" class="cta" type="button">Load</button>
+          <button id="def-save" class="cta" type="button">Save</button>
+          <p id="def-msg" class="status"></p>
+        </div>
+      </section>
+
+      <section class="glass" style="margin-top:12px;">
+        <h3 style="margin:0 0 6px;">Deep Backtest</h3>
+        <div class="form-grid">
+          <label><span>Symbol</span><input id="db-symbol" type="text" value="BTC/USDT" /></label>
+          <label><span>Start</span><input id="db-start" type="date" /></label>
+          <label><span>End</span><input id="db-end" type="date" /></label>
+        </div>
+        <div class="btn-row">
+          <button id="db-run" class="cta" type="button">Run Deep Backtest</button>
+          <p id="db-msg" class="status"></p>
+        </div>
+        <div id="db-out" class="results"></div>
+      </section>
+    </main>
+
+    <div class="bottom-dock" role="contentinfo">
+      <div class="dock-inner">
+        <nav class="nav bottom-nav" aria-label="Primary">
+          <a href="index.html#home">Home</a>
+          <a href="user.html#home">User</a>
+          <a href="admin.html#home" class="active">Admin</a>
+        </nav>
+        <div class="floorbar"><span class="floor-text">(c) <span class="year"></span> Wolf House. All rights reserved.</span></div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="admin.js"></script>
+    <button class="theme-switch theme-switch-floating" data-theme-toggle type="button">Theme</button>
+    <script src="theme_toggle.js" defer></script>
+  </body>
+</html>

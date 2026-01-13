@@ -1,0 +1,13 @@
+numpy
+pandas
+yfinance
+python-telegram-bot==20.7
+streamlit
+pyyaml
+fastapi
+uvicorn[standard]
+httpx
+pydantic
+websocket-client
+pybit>=5.6.2
+python-dateutil

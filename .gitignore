@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Data / cache
+data_cache.db
+.ml_entry_conf.pkl
+cache_data/
+cache_test/
+live_feed.log
+server*.log
+watchdog.log
+experiment/logs/
+.server.pid
+.watchdog.lock
+*.log
+*.csv
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node/Web build (none currently, defensive)
+dist/
+build/
+
+webversion/
