@@ -10,11 +10,11 @@
   } catch (_) {}
   try {
     const host = location.hostname || "";
-    if (!window.API_BASE && /(^|\.)wolfmystrix\.in$/i.test(host)) {
-      window.API_BASE = "https://api.wolfmystrix.in";
+    if (!window.API_BASE && /(^|\.)mystrixwolf\.in$/i.test(host)) {
+      window.API_BASE = "https://api.mystrixwolf.in";
     }
     if (!window.API_BASE && /(^|\.)github\.io$/i.test(host)) {
-      window.API_BASE = "https://api.wolfmystrix.in";
+      window.API_BASE = "https://api.mystrixwolf.in";
     }
   } catch (_) {}
   const apiBase = () => {

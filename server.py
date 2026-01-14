@@ -45,9 +45,9 @@ if not cors_origins and not cors_allow_all:
         "http://localhost:8000",
         "http://127.0.0.1",
         "http://localhost",
-        "https://wolfmystrix.in",
-        "https://www.wolfmystrix.in",
-        "https://api.wolfmystrix.in",
+        "https://mystrixwolf.in",
+        "https://www.mystrixwolf.in",
+        "https://api.mystrixwolf.in",
         "https://alterwolfhouse-ai.github.io",
     ]
 
