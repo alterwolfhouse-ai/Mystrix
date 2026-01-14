@@ -14,6 +14,9 @@
     if (!window.API_BASE && /(^|\.)wolfmystrix\.in$/i.test(host)) {
       window.API_BASE = 'https://api.wolfmystrix.in';
     }
+    if (!window.API_BASE && /(^|\.)github\.io$/i.test(host)) {
+      window.API_BASE = 'https://api.wolfmystrix.in';
+    }
   }catch(_){ }
   // If opened via file://, default API base to local server
   try{ if(location.protocol==='file:' && !window.API_BASE){ window.API_BASE='http://127.0.0.1:8000'; } }catch(_){ }

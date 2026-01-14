@@ -2,8 +2,18 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
   try {
+    const q = new URLSearchParams(location.search);
+    const api = q.get("api");
+    if (api) {
+      window.API_BASE = api;
+    }
+  } catch (_) {}
+  try {
     const host = location.hostname || "";
     if (!window.API_BASE && /(^|\.)wolfmystrix\.in$/i.test(host)) {
+      window.API_BASE = "https://api.wolfmystrix.in";
+    }
+    if (!window.API_BASE && /(^|\.)github\.io$/i.test(host)) {
       window.API_BASE = "https://api.wolfmystrix.in";
     }
   } catch (_) {}
