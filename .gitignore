@@ -23,6 +23,8 @@ experiment/logs/
 *.log
 cloudflared_url*.txt
 cloudflared_url*.json
+cloudflared.yml
+cloudflared.yaml
 *.csv
 
 # OS files
