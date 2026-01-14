@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import os
+import secrets
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from routers.auth import router as auth_router
@@ -24,16 +26,66 @@ from routers.presets import router as presets_router
 from routers.universe import router as universe_router
 from routers.market import router as market_router
 from routers.admin import router as admin_router
+from services.auth import get_user_from_sid
 
 app = FastAPI(title="TradeBoard API - Pine Long", version="3.0")
 
+def _parse_origins(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+cors_env = os.environ.get("CORS_ORIGINS")
+cors_allow_all = (cors_env or "").strip() == "*"
+cors_origins = _parse_origins(cors_env)
+if not cors_origins and not cors_allow_all:
+    cors_origins = [
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://127.0.0.1",
+        "http://localhost",
+        "https://wolfmystrix.in",
+        "https://www.wolfmystrix.in",
+        "https://api.wolfmystrix.in",
+        "https://alterwolfhouse-ai.github.io",
+    ]
+
+cors_origin_regex = os.environ.get("CORS_ORIGIN_REGEX") or None
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # dev convenience; narrow in prod
-    allow_credentials=True,
+    allow_origins=["*"] if cors_allow_all else cors_origins,
+    allow_origin_regex=cors_origin_regex,
+    allow_credentials=False if cors_allow_all else True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+API_TOKEN = os.environ.get("API_TOKEN", "").strip()
+if API_TOKEN:
+    @app.middleware("http")
+    async def api_token_guard(request: Request, call_next):
+        path = request.url.path or ""
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        if path.startswith("/static"):
+            return await call_next(request)
+        if path in ("/healthz", "/symbols", "/auth/login", "/auth/signup", "/auth/logout", "/favicon.ico"):
+            return await call_next(request)
+        if path.startswith("/docs") or path.startswith("/openapi"):
+            return await call_next(request)
+        token = request.headers.get("x-api-key") or ""
+        if not token:
+            auth = request.headers.get("authorization") or ""
+            if auth.lower().startswith("bearer "):
+                token = auth[7:].strip()
+        if token and secrets.compare_digest(token, API_TOKEN):
+            return await call_next(request)
+        sid = request.cookies.get("sid")
+        if sid and get_user_from_sid(sid):
+            return await call_next(request)
+        return JSONResponse({"detail": "unauthorized"}, status_code=401)
 
 # Serve static web assets for remote/mobile use
 # Access via: http://<host>:<port>/static/magic.html

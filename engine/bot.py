@@ -20,6 +20,7 @@ class RemixBot:
         self.equity = self.capital
         self.fee_bps = float(cfg["fee_bps"])
         self.cache: Dict[str, pd.DataFrame] = {}
+        self.used_synthetic = False
         self.execs: Dict[str, Executor3M] = {
             s: Executor3M(cfg["rsi_oversold"], cfg["rsi_overbought"], cfg["max_wait_bars"], cfg["cooldown_3m_bars"])
             for s in self.symbols
@@ -37,7 +38,9 @@ class RemixBot:
         except Exception as e:
             if self.cfg.get("use_synthetic_if_ccxt_fails", True):
                 log.warning(f"CCXT failed for {symbol}: {e}. Using synthetic.")
-                df = synthetic_hourly(self.cfg["backtest_start"], self.cfg["backtest_end"])
+                seed = self.cfg.get("synthetic_seed")
+                df = synthetic_hourly(self.cfg["backtest_start"], self.cfg["backtest_end"], seed=seed)
+                self.used_synthetic = True
             else:
                 raise
         df = df[(df.index>=self.cfg["backtest_start"]) & (df.index<=self.cfg["backtest_end"])]
@@ -188,7 +191,15 @@ class RemixBot:
     def report(self):
         df = pd.DataFrame(self.trades)
         if df.empty:
-            return {"Total Return (%)": 0.0, "Num Trades": 0, "Win Rate (%)": 0.0, "Avg P&L": 0.0, "Sharpe": 0.0, "Ending Equity": self.equity}
+            return {
+                "Total Return (%)": 0.0,
+                "Num Trades": 0,
+                "Win Rate (%)": 0.0,
+                "Avg P&L": 0.0,
+                "Sharpe": 0.0,
+                "Ending Equity": self.equity,
+                "Synthetic Data Used": bool(self.used_synthetic),
+            }
         pnl = df[df["type"].str.startswith("exit")]["pnl"]
         total_return = (self.equity/float(self.capital) - 1.0)*100
         winrate = float((pnl>0).mean()*100) if not pnl.empty else 0.0
@@ -201,5 +212,6 @@ class RemixBot:
             "Win Rate (%)": round(winrate,2),
             "Avg P&L": round(avg_pnl,2),
             "Sharpe": round(sharpe,2),
-            "Ending Equity": round(self.equity,2)
+            "Ending Equity": round(self.equity,2),
+            "Synthetic Data Used": bool(self.used_synthetic),
         }

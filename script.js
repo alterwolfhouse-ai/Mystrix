@@ -8,6 +8,13 @@
   const $$=s=>Array.from(document.querySelectorAll(s));
   // Optional API override via URL: ?api=http://127.0.0.1:8000
   try{ const q=new URLSearchParams(location.search); const api=q.get('api'); if(api){ window.API_BASE=api; } }catch(_){ }
+  // Default API host for custom domain
+  try{
+    const host = location.hostname || '';
+    if (!window.API_BASE && /(^|\.)wolfmystrix\.in$/i.test(host)) {
+      window.API_BASE = 'https://api.wolfmystrix.in';
+    }
+  }catch(_){ }
   // If opened via file://, default API base to local server
   try{ if(location.protocol==='file:' && !window.API_BASE){ window.API_BASE='http://127.0.0.1:8000'; } }catch(_){ }
 
@@ -102,7 +109,13 @@
       htf_rsi_length: parseInt(get('htf-rsi-length',14)), htf_rsi_overbought: parseInt(get('htf-rsi-ob',79)), htf_rsi_oversold: parseInt(get('htf-rsi-os',27)), htf_lookbackLeft: parseInt(get('htf-lb-left',5)), htf_lookbackRight: parseInt(get('htf-lb-right',5)), htf_rangeLower: parseInt(get('htf-range-low',5)), htf_rangeUpper: parseInt(get('htf-range-up',60)), htf_max_wait_bars: parseInt(get('htf-max-wait',25))
     };
   }
-  function renderMetrics(m){ if(!m) return '<p class="status">No metrics.</p>'; const rows=Object.entries(m).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join(''); return `<table class="trades"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>${rows}</tbody></table>`; }
+  function renderMetrics(m){
+    if(!m) return '<p class="status">No metrics.</p>';
+    const synth = String(m['Synthetic Data Used'] ?? '').toLowerCase() === 'true';
+    const warn = synth ? '<p class="status">Warning: synthetic data used (network fetch failed).</p>' : '';
+    const rows=Object.entries(m).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+    return warn + `<table class="trades"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
   function renderTrades(tr){ if(!tr||!tr.length) return '<p class="status">No trades.</p>'; const head=Object.keys(tr[0]); const th=head.map(h=>`<th>${h}</th>`).join(''); const body=tr.map(row=>`<tr>${head.map(h=>`<td>${(row[h]!==undefined&&row[h]!==null)?row[h]:'-'}</td>`).join('')}</tr>`).join(''); return `<table class="trades"><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>`; }
   function drawEquity(trades, initial){ const c=document.getElementById('bt-equity'); const ctx=(c && c.getContext)? c.getContext('2d') : null; if(!ctx) return; ctx.clearRect(0,0,c.width,c.height); const exits = (trades||[]).filter(t=>String(t.type||'').startsWith('exit')); if(exits.length===0){ ctx.fillStyle='#aaa'; ctx.fillText('No closed trades', 10, 20); return; } let equity=Number(initial||10000); const points=[]; exits.forEach(t=>{ const pnl=Number(t.pnl||0); equity += pnl; const ts=new Date(t.t||Date.now()).getTime(); points.push([ts, equity]); }); points.sort((a,b)=>a[0]-b[0]); const pad=30; const W=c.width, H=c.height; const xs=points.map(p=>p[0]), ys=points.map(p=>p[1]); const xMin=Math.min(...xs), xMax=Math.max(...xs); const yMin=Math.min(...ys), yMax=Math.max(...ys); const xScale=(x)=> pad + (W-2*pad) * ((x - xMin)/Math.max(1,(xMax-xMin))); const yScale=(y)=> H - pad - (H-2*pad) * ((y - yMin)/Math.max(1,(yMax-yMin)));
     ctx.strokeStyle='rgba(124,77,255,0.9)'; ctx.lineWidth=2; ctx.beginPath(); points.forEach((p,i)=>{ const x=xScale(p[0]); const y=yScale(p[1]); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke(); ctx.fillStyle='rgba(124,77,255,0.15)'; ctx.lineTo(xScale(xMax), yScale(yMin)); ctx.lineTo(xScale(xMin), yScale(yMin)); ctx.closePath(); ctx.fill(); ctx.fillStyle='#999'; ctx.font='12px monospace'; ctx.fillText(`Start: ${Math.round(points[0][1])}`, 10, 14); ctx.fillText(`End: ${Math.round(points[points.length-1][1])}`, 10, 28);

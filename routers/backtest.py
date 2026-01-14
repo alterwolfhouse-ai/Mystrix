@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timedelta
+import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -11,10 +12,11 @@ from engine.pine_long import PineLongEngine
 from engine.storage import get_ohlcv
 from experiment.concurrent_backtester import ConcurrentBacktestConfig, run_concurrent_backtest
 from schemas.backtest import BacktestReq, ConcurrentBacktestRequest, DeepBacktestRequest
-from utils.dates import norm_date
+from utils.dates import norm_date, validate_date_range
 from utils.symbols import norm_symbol
 
 router = APIRouter(tags=["backtest"])
+log = logging.getLogger("routers.backtest")
 
 
 def _candles_from_df(xdf):
@@ -30,6 +32,7 @@ def backtest(req: BacktestReq):
         symbol = norm_symbol(req.symbols[0])
         start = norm_date(req.start)
         end = norm_date(req.end)
+        validate_date_range(start, end)
         timeframe = req.overrides.get("timeframe_hist", "3m")
         pine_params = {k: v for k, v in req.overrides.items() if k not in ("timeframe_hist",)}
         df = get_ohlcv(symbol, timeframe, start, end)
@@ -170,8 +173,11 @@ def backtest(req: BacktestReq):
                     if ts:
                         eq.append({"t": ts.isoformat(), "equity": equity})
             return {"metrics": metrics, "trades": trades, "candles": candles, "markers": markers, "equity_series": eq}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception:
+        log.exception("backtest failed")
+        raise HTTPException(status_code=500, detail="backtest failed")
 
 
 @router.post("/backtest/deep")
@@ -183,6 +189,7 @@ def backtest_deep(req: DeepBacktestRequest):
         start_raw = req.start or (today - timedelta(days=365 * 3)).isoformat()
         start = norm_date(start_raw)
         end = norm_date(end_raw)
+        validate_date_range(start, end)
         overrides = dict(req.overrides or {})
         if "timeframe_hist" not in overrides and req.timeframe:
             overrides["timeframe_hist"] = req.timeframe
@@ -194,20 +201,27 @@ def backtest_deep(req: DeepBacktestRequest):
             engine=req.engine or "long",
         )
         return backtest(bt_req)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception:
+        log.exception("backtest/deep failed")
+        raise HTTPException(status_code=500, detail="backtest failed")
 
 
 @router.post("/backtest/concurrent")
 def backtest_concurrent(req: ConcurrentBacktestRequest):
     try:
+        start_date = norm_date(req.start_date) if req.start_date else None
+        end_date = norm_date(req.end_date) if req.end_date else None
+        if start_date and end_date:
+            validate_date_range(start_date, end_date)
         cfg = ConcurrentBacktestConfig(
             dataset_path=Path(req.dataset_path),
             model_path=Path(req.model_path) if req.model_path else None,
             threshold=req.threshold,
             symbols=req.symbols or None,
-            start_date=req.start_date,
-            end_date=req.end_date,
+            start_date=start_date,
+            end_date=end_date,
             initial_equity=req.initial_equity,
             equity_pct=req.equity_pct,
             fee_bps=req.fee_bps,
@@ -216,5 +230,8 @@ def backtest_concurrent(req: ConcurrentBacktestRequest):
         )
         result = run_concurrent_backtest(cfg)
         return result
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception:
+        log.exception("backtest/concurrent failed")
+        raise HTTPException(status_code=500, detail="backtest failed")

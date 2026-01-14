@@ -116,19 +116,62 @@ def fetch_ccxt_recent(symbol: str, timeframe: str = "3m", limit: int = 2000) -> 
     df.set_index("timestamp", inplace=True)
     return df.astype(float)
 
-def synthetic_hourly(start: str, end: str) -> pd.DataFrame:
+def synthetic_hourly(start: str, end: str, seed: Optional[int] = None) -> pd.DataFrame:
     start = pd.to_datetime(start); end = pd.to_datetime(end)
     periods = int((end-start).total_seconds() // 3600) + 1
     idx = pd.date_range(start, periods=periods, freq="H")
-    np.random.seed(42)
-    rets = np.random.normal(0.00015, 0.018, periods)
-    close = 20000*np.exp(np.cumsum(rets))
+    if seed is None:
+        seed_env = os.environ.get("SYNTHETIC_SEED")
+        if seed_env not in (None, ""):
+            try:
+                seed = int(seed_env)
+            except Exception:
+                seed = None
+    rng = np.random.default_rng(seed)
+    rets = rng.normal(0.00015, 0.018, periods)
+    close = 20000 * np.exp(np.cumsum(rets))
     open_ = np.r_[close[0], close[:-1]]
-    high = np.maximum(open_, close) * (1 + np.abs(np.random.normal(0,0.004,periods)))
-    low  = np.minimum(open_, close) * (1 - np.abs(np.random.normal(0,0.004,periods)))
-    vol  = np.random.lognormal(15, 1, periods)
+    high = np.maximum(open_, close) * (1 + np.abs(rng.normal(0, 0.004, periods)))
+    low  = np.minimum(open_, close) * (1 - np.abs(rng.normal(0, 0.004, periods)))
+    vol  = rng.lognormal(15, 1, periods)
     df = pd.DataFrame({"open":open_,"high":high,"low":low,"close":close,"volume":vol}, index=idx)
     return df
 
 def mintick(symbol: str) -> float:
+    try:
+        ex = _get_exchange()
+        market = None
+        try:
+            market = ex.market(symbol)
+        except Exception:
+            try:
+                ex.load_markets()
+                market = ex.market(symbol)
+            except Exception:
+                market = None
+        if market:
+            info = market.get("info", {})
+            for key in ("tickSize", "tick_size", "minPrice", "min_price"):
+                if key in info:
+                    try:
+                        return float(info[key])
+                    except Exception:
+                        pass
+            precision = (market.get("precision") or {}).get("price")
+            if precision is not None:
+                try:
+                    return 10 ** (-int(precision))
+                except Exception:
+                    try:
+                        return 10 ** (-float(precision))
+                    except Exception:
+                        pass
+            limits = (market.get("limits") or {}).get("price") or {}
+            if limits.get("min") is not None:
+                try:
+                    return float(limits["min"])
+                except Exception:
+                    pass
+    except Exception:
+        pass
     return 0.01

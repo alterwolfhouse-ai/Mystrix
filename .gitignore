@@ -19,7 +19,10 @@ watchdog.log
 experiment/logs/
 .server.pid
 .watchdog.lock
+.cloudflared_watch.lock
 *.log
+cloudflared_url*.txt
+cloudflared_url*.json
 *.csv
 
 # OS files

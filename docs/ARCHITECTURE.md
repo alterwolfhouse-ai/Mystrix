@@ -86,6 +86,10 @@ This document explains how the project is structured, how the server side and br
 - API applies safe defaults for local runs:
   - `disable_ml = true` (unless you provide a trained schema‑aligned model).
   - `use_dxy_filter = false` (no macro gating for local/dev).
+- Optional environment guards:
+  - `MAX_BACKTEST_DAYS` caps backtest date ranges.
+  - `API_TOKEN` requires `X-API-Key` (or a valid session cookie) for API access.
+  - `CORS_ORIGINS`/`CORS_ORIGIN_REGEX` control allowed origins.
 
 ## Run Book
 - Install & start server (local only):
@@ -226,7 +230,7 @@ This project ships two personas and a shared engine. The Admin experience expose
 
 - Pages and tree
   - `index.html` (Mystrix marketing): hero, story, value pillars, footer CTAs, bottom dock.
-  - `login.html` (standalone sign‑in): username/password, quick‑fill for seeded accounts, server status.
+  - `login.html` (standalone sign-in): username/password, optional quick-fill buttons on localhost, server status.
   - `user.html` (user panel): symbol dropdown, “missing coin” suggest, favorites row, chart canvas, alarm toggle (per symbol), date‑range backtest (timeframe/params locked by admin defaults), server status dot.
   - `admin.html` (admin dashboard): full Magic Lab panels (Local Backtester, Live Signals, Signal Chart), plus Users, Suggestions, Engine Defaults editor and Deep Backtest.
   - `magic.html` (legacy/admin panel): original UI; kept for familiarity and reuse.
@@ -266,7 +270,7 @@ This project ships two personas and a shared engine. The Admin experience expose
   - Local LAN: `HOST=0.0.0.0 PORT=8000 python server.py`; pages under `/static`.
   - Cloud: `deploy/cloud/compose.yml` with Caddy for TLS; or Cloudflare/other tunnels for no‑port‑forwarding.
 
-Security notes: first created account is admin; additional seeds (Fantum/Era) are provided for convenience in development. Cookies require serving pages from `/static` (avoid opening files directly). CORS is restricted to `http://127.0.0.1:8000`/`http://localhost:8000` for credentialed calls by default.
+Security notes: the first created account is admin; no default accounts are created. Cookies require serving pages from `/static` (avoid opening files directly). CORS is controlled by `CORS_ORIGINS`/`CORS_ORIGIN_REGEX`, and `API_TOKEN` can require `X-API-Key` (or a valid session cookie) for API access.
 
 ---
 
@@ -294,7 +298,7 @@ The client is “thin but capable”: all parameter entry, charts, and tables ar
 All pages are simple HTML files committed to the repository and served from the server’s working directory. The “bottom dock” component (nav bar + floor light bar) is repeated across pages for consistent navigation and branding.
 
 - `index.html` – The marketing/landing page for “Mystrix by Wolf House.” It introduces the product, includes the “Story of Mystrix,” and presents value pillars and CTAs. The “Launch Mystrix” CTA links to `user.html`.
-- `login.html` – A standalone login page. It offers quick‑fill buttons for the seeded admin and demo accounts (useful for demos or local testing) and checks server status.
+- `login.html` - A standalone login page. It offers optional quick-fill buttons for localhost development and checks server status.
 - `user.html` – The user panel. The top has a symbol selector and a “Missing coin?” submit box. The middle shows a chart canvas with fetch/auto and an alarm toggle, and a favorites strip for quick symbol access. A guarded “Backtest” block allows picking only Start and End dates; server defaults are applied behind the scenes.
 - `admin.html` – The admin dashboard. The top half reinstates the full Magic Lab panels (Backtester with RSI and other parameters, Live Signals, and Signal Chart). Below, the admin‑only blocks list users, coin suggestions, the Engine Defaults editor, and a Deep Backtest runner.
 - `magic.html` – The original Magic Lab page. It remains as a reference and for anyone who prefers the classic view.
@@ -340,7 +344,7 @@ We split behavior into four scripts:
   - For the upper half of `admin.html` (Magic Lab panels), the logic is reused from `script.js` by including it before `admin.js`.
 
 - `login.js` – Focused on login flows.
-  - Health check for `/healthz`, quick buttons to fill `Fantum/wolfhouse` (admin seed) and `Era/Bubble@26` (demo seed), and redirect to `user.html` after a successful login.
+  - Health check for `/healthz`, optional quick-fill buttons on localhost, and redirect to `user.html` after a successful login.
 
 The approach keeps each page relatively self‑contained while avoiding duplication by reusing `script.js` for the Magic Lab UI.When in doubt, search for element IDs (e.g., `#run-backtest`, `#sc-fetch`) to see where they are wired.
 
@@ -349,10 +353,10 @@ The approach keeps each page relatively self‑contained while avoiding duplicat
 `server.py` is the single entry point. Its responsibilities:
 
 - Serve the API and all static assets from a single origin at `/static`. This avoids CORS headaches for cookie flows, particularly for login and any stateful requests.
-- Add CORS for development origins (127.0.0.1:8000, localhost:8000). We avoid wildcard CORS when cookies are involved.
+- Add CORS for configured origins via `CORS_ORIGINS`/`CORS_ORIGIN_REGEX` (defaults include localhost). We avoid wildcard CORS when cookies are involved.
 - Initialize a small SQLite store inside `data_cache.db` for:
-  - `users(id, email, name, pass_salt, pass_hash, is_admin, created_at)` – authentication and roles. The first ever created user becomes admin; we also seed the named accounts for local convenience.
-  - `sessions(token, user_id, expires_at)` – HttpOnly cookie sessions keyed by `mtx_session`.
+  - `users(id, email, name, pass_salt, pass_hash, is_admin, created_at)` - authentication and roles. The first created user becomes admin.
+  - `sessions(sid, user_id, created_at, expires_at)` – HttpOnly cookie sessions keyed by `sid`.
   - `favorites(id, user_id, symbol)` – user’s quick‑access list.
   - `suggestions(id, user_id, text, created_at, resolved)` – coin requests from the user panel.
   - `settings(key, value)` – JSON store for engine defaults (`engine_defaults`).
@@ -423,12 +427,12 @@ Android: the app in `android version/` wraps the website in a WebView. It loads 
 ### 9. Developer Workflow and Local Testing
 
 1) Create and activate a virtual environment; install requirements.
-2) Launch `server.py`. On first run the app seeds the DB with two accounts: `Fantum/wolfhouse` (admin) and `Era/Bubble@26` (demo). It also seeds a default timeframe and empty overrides.
+2) Launch `server.py`. On first run there are no users; the first signup becomes admin. Defaults fall back to timeframe `3m` with empty overrides when not set.
 3) Visit `static/login.html` and sign in. Use the admin to review users and suggestions and optionally change defaults.
 4) Visit `static/user.html` and explore the user journey. Favorites are persisted per account.
 5) For Magic Lab testing, go to `static/admin.html` which contains the full Backtester, Live Signals, and Chart along with admin controls.
 
-If you see “TypeError: Failed to fetch” in the browser, verify you are not loading the page as a file, confirm the server is online (visit `/healthz`), and ensure the browser origin is allowed by CORS (we allow `http://127.0.0.1:8000` and `http://localhost:8000` by default).
+If you see ?TypeError: Failed to fetch? in the browser, verify you are not loading the page as a file, confirm the server is online (visit `/healthz`), and ensure the browser origin is allowed by CORS (configure `CORS_ORIGINS`/`CORS_ORIGIN_REGEX`).
 
 ### 10. Extending Safely
 

@@ -1,6 +1,12 @@
 (() => {
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  try {
+    const host = location.hostname || "";
+    if (!window.API_BASE && /(^|\.)wolfmystrix\.in$/i.test(host)) {
+      window.API_BASE = "https://api.wolfmystrix.in";
+    }
+  } catch (_) {}
   const apiBase = () => {
     try { return window.API_BASE || location.origin; }
     catch (_) { return location.origin; }

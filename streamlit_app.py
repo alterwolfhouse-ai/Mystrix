@@ -1,3 +1,4 @@
+import copy
 import yaml
 import pandas as pd
 import streamlit as st
@@ -25,10 +26,11 @@ with colC:
 run = st.button("Run Backtest")
 
 if run:
-    cfg["backtest_start"] = start
-    cfg["backtest_end"] = end
-    cfg["initial_capital"] = init_cap
-    bot = RemixBot(cfg)
+    cfg_run = copy.deepcopy(cfg)
+    cfg_run["backtest_start"] = start
+    cfg_run["backtest_end"] = end
+    cfg_run["initial_capital"] = init_cap
+    bot = RemixBot(cfg_run)
     metrics = bot.run_backtest()
     st.subheader("Metrics")
     st.json(metrics)
@@ -40,7 +42,7 @@ if run:
         st.dataframe(trades_df.tail(200), use_container_width=True)
 
         # Simple equity curve from trades
-        equity = float(cfg["initial_capital"])
+        equity = float(cfg_run["initial_capital"])
         eq = []
         for t in bot.trades:
             if t["type"] == "enter":
@@ -54,4 +56,3 @@ if run:
             st.line_chart(pd.Series(eq))
 else:
     st.info("Adjust dates/capital and click Run Backtest.")
-

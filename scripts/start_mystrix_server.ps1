@@ -12,9 +12,12 @@ if ($listener) {
   exit 0
 }
 
-$python = Join-Path $repo '.venv\Scripts\python.exe'
+$python = Join-Path $repo 'runtime\python\python.exe'
 if (!(Test-Path $python)) {
-  $python = 'python'
+  $python = Join-Path $repo '.venv\Scripts\python.exe'
+  if (!(Test-Path $python)) {
+    $python = 'python'
+  }
 }
 
 Start-Process -FilePath $python -ArgumentList 'server.py' -WorkingDirectory $repo -RedirectStandardOutput $outLog -RedirectStandardError $errLog -WindowStyle Hidden
