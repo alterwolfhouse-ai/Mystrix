@@ -242,6 +242,9 @@ function renderUsers(){
     const profitAlloc = fmtNum(u.total_profit);
     const profitPaid = fmtNum(u.total_profit_withdrawn);
     const created = fmtTime(u.created_at);
+    const apiUpdated = fmtTime(u.api_updated_at);
+    const apiKeyMask = u.api_key_masked || '';
+    const apiSecretMask = u.api_secret_masked || '';
     return `
       <tr>
         <td><input type="checkbox" class="bulk-select" data-id="${u.id}"/></td>
@@ -279,11 +282,17 @@ function renderUsers(){
         <td><input type="date" data-plan="plan_expires_at" data-id="${u.id}" value="${expiry}"/></td>
         <td>${fmtTime(u.last_login)}</td>
         <td>${created}</td>
+        <td><input type="text" data-api="label" data-id="${u.id}" value="${u.api_label||''}" placeholder="Label"/></td>
+        <td><input type="text" data-api="key" data-id="${u.id}" placeholder="${apiKeyMask || 'Not set'}"/></td>
+        <td><input type="password" data-api="secret" data-id="${u.id}" placeholder="${apiSecretMask || 'Not set'}"/></td>
+        <td>${apiUpdated}</td>
         <td>
           <button class="cta save-user" data-id="${u.id}">Save</button>
           <button class="cta reset-pass" data-id="${u.id}">Reset</button>
           <button class="cta force-logout" data-id="${u.id}">Logout</button>
           <button class="cta ledger-user" data-id="${u.id}">Ledger</button>
+          <button class="cta save-api" data-id="${u.id}">Save API</button>
+          <button class="cta danger clear-api" data-id="${u.id}">Clear API</button>
           <button class="cta danger delete-user" data-id="${u.id}">Delete</button>
         </td>
       </tr>
@@ -319,10 +328,14 @@ function renderUsers(){
           <th>Expires</th>
           <th>Last Login</th>
           <th>Created</th>
+          <th>API Label</th>
+          <th>API Key</th>
+          <th>API Secret</th>
+          <th>API Updated</th>
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody>${rows || `<tr><td colspan="26">No users found.</td></tr>`}</tbody>
+      <tbody>${rows || `<tr><td colspan="30">No users found.</td></tr>`}</tbody>
     </table>
   `;
 
@@ -409,6 +422,50 @@ function renderUsers(){
       const filter = $('#ledger-filter-user');
       if(filter) filter.value = String(id);
       await loadLedgerEvents();
+    });
+  });
+
+  $('#admin-users-table').querySelectorAll('.save-api').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      const label = $('#admin-users-table').querySelector(`input[data-api="label"][data-id="${id}"]`)?.value || '';
+      const key = $('#admin-users-table').querySelector(`input[data-api="key"][data-id="${id}"]`)?.value || '';
+      const secret = $('#admin-users-table').querySelector(`input[data-api="secret"][data-id="${id}"]`)?.value || '';
+      try{
+        await fetchJSON('/admin/users/api', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            user_id: id,
+            api_label: label,
+            api_key: key || null,
+            api_secret: secret || null,
+          }),
+        });
+        $('#admin-msg').textContent = `API updated for user ${id}.`;
+        await loadUsers();
+      }catch(e){
+        $('#admin-msg').textContent = String(e);
+      }
+    });
+  });
+
+  $('#admin-users-table').querySelectorAll('.clear-api').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      const ok = confirm(`Clear API credentials for user ${id}?`);
+      if(!ok) return;
+      try{
+        await fetchJSON('/admin/users/api', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({user_id: id, clear: true}),
+        });
+        $('#admin-msg').textContent = `API cleared for user ${id}.`;
+        await loadUsers();
+      }catch(e){
+        $('#admin-msg').textContent = String(e);
+      }
     });
   });
 

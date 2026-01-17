@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from engine.storage import _conn
 from services.auth import get_user_from_sid
+from services.secure_store import decrypt_secret, encrypt_secret, mask_secret
 
 
 router = APIRouter(tags=["admin"])
@@ -45,6 +46,14 @@ class BulkUserAccessPayload(BaseModel):
     clear_plan_expires: bool = False
     plan_name: str | None = None
     plan_note: str | None = None
+
+
+class UserApiPayload(BaseModel):
+    user_id: int
+    api_key: str | None = None
+    api_secret: str | None = None
+    api_label: str | None = None
+    clear: bool = False
 
 
 def _require_admin(request: Request) -> Dict[str, Any]:
@@ -178,7 +187,8 @@ def admin_users(request: Request) -> Dict[str, List[Dict[str, Any]]]:
             """
             SELECT id,email,name,is_admin,created_at,
                    has_mystrix_plus,has_backtest,has_autotrader,has_chat,
-                   is_active,plan_expires_at,last_login,plan_name,plan_note
+                   is_active,plan_expires_at,last_login,plan_name,plan_note,
+                   api_key_enc,api_secret_enc,api_label,api_updated_at
             FROM users
             ORDER BY created_at DESC
             """
@@ -199,6 +209,10 @@ def admin_users(request: Request) -> Dict[str, List[Dict[str, Any]]]:
             "last_login": r[11],
             "plan_name": r[12] or "",
             "plan_note": r[13] or "",
+            "api_key_masked": mask_secret(decrypt_secret(r[14] or "")),
+            "api_secret_masked": mask_secret(decrypt_secret(r[15] or "")),
+            "api_label": r[16] or "",
+            "api_updated_at": r[17],
             "principal_balance": ledger_totals.get(r[0], {}).get("principal_balance", 0.0),
             "profit_balance": ledger_totals.get(r[0], {}).get("profit_balance", 0.0),
             "net_balance": ledger_totals.get(r[0], {}).get("principal_balance", 0.0)
@@ -328,6 +342,60 @@ def admin_users_bulk_update(payload: BulkUserAccessPayload, request: Request) ->
             },
         )
     return {"ok": True, "updated": int(updated or 0), "skipped_admin": int(skipped_admin[0] or 0)}
+
+
+@router.post("/admin/users/api")
+def admin_users_api(payload: UserApiPayload, request: Request) -> Dict[str, Any]:
+    admin = _require_admin(request)
+    user_id = int(payload.user_id)
+    with _conn() as con:
+        row = con.execute("SELECT id FROM users WHERE id=?", (user_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="user not found")
+        now = int(time.time())
+        if payload.clear:
+            con.execute(
+                """
+                UPDATE users
+                SET api_key_enc='',
+                    api_secret_enc='',
+                    api_label='',
+                    api_updated_at=?
+                WHERE id=?
+                """,
+                (now, user_id),
+            )
+            _log_admin_action(con, admin.get("id"), "user_api_clear", user_id, {})
+            return {"ok": True}
+
+        updates = []
+        params: List[Any] = []
+        if payload.api_key:
+            updates.append("api_key_enc=?")
+            params.append(encrypt_secret(payload.api_key.strip()))
+        if payload.api_secret:
+            updates.append("api_secret_enc=?")
+            params.append(encrypt_secret(payload.api_secret.strip()))
+        if payload.api_label is not None:
+            updates.append("api_label=?")
+            params.append(payload.api_label.strip())
+        if not updates:
+            raise HTTPException(status_code=400, detail="no api updates provided")
+        updates.append("api_updated_at=?")
+        params.append(now)
+        params.append(user_id)
+        con.execute(
+            f"UPDATE users SET {', '.join(updates)} WHERE id=?",
+            tuple(params),
+        )
+        _log_admin_action(
+            con,
+            admin.get("id"),
+            "user_api_update",
+            user_id,
+            {"api_label": payload.api_label or "", "has_key": bool(payload.api_key), "has_secret": bool(payload.api_secret)},
+        )
+    return {"ok": True}
 
 
 class ResetPasswordPayload(BaseModel):

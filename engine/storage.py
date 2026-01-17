@@ -327,6 +327,10 @@ def _ensure_user_columns(con: sqlite3.Connection) -> None:
         "last_login": "INTEGER DEFAULT NULL",
         "plan_name": "TEXT DEFAULT ''",
         "plan_note": "TEXT DEFAULT ''",
+        "api_key_enc": "TEXT DEFAULT ''",
+        "api_secret_enc": "TEXT DEFAULT ''",
+        "api_label": "TEXT DEFAULT ''",
+        "api_updated_at": "INTEGER DEFAULT NULL",
     }
     for col, decl in additions.items():
         if col not in cols:

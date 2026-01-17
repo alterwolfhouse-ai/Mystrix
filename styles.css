@@ -651,7 +651,8 @@ body#magic-page .site-header { display: none; }
 }
 .table-wrap input[type="text"],
 .table-wrap input[type="date"],
-.table-wrap input[type="number"] {
+.table-wrap input[type="number"],
+.table-wrap input[type="password"] {
   background: rgba(255,255,255,0.06);
   color: var(--text);
   border: 1px solid rgba(255,255,255,0.18);
