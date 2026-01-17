@@ -25,7 +25,13 @@ body#concurrent-page {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+button, input, select, textarea { font-family: inherit; }
+input::placeholder,
+textarea::placeholder { color: rgba(247,244,255,0.6); }
 
 .brand-pin {
   position: fixed;

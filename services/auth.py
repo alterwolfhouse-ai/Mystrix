@@ -8,6 +8,68 @@ from typing import Dict, Optional
 
 from engine.storage import _conn
 
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "Fantum1183").strip()
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "Fantum@36")
+
+
+def is_reserved_admin_identity(value: str) -> bool:
+    if not value:
+        return False
+    return value.strip().lower() == ADMIN_USERNAME.lower()
+
+
+def ensure_admin_user() -> None:
+    username = ADMIN_USERNAME.strip()
+    if not username:
+        return
+    h, salt = hash_pw(ADMIN_PASSWORD)
+    now = int(time.time())
+    with _conn() as con:
+        row = con.execute("SELECT id FROM users WHERE email=?", (username,)).fetchone()
+        if row:
+            con.execute(
+                """
+                UPDATE users
+                SET pass_hash=?,
+                    pass_salt=?,
+                    is_admin=1,
+                    has_mystrix_plus=1,
+                    has_backtest=1,
+                    has_autotrader=1,
+                    has_chat=1,
+                    is_active=1
+                WHERE email=?
+                """,
+                (h, salt, username),
+            )
+        else:
+            con.execute(
+                """
+                INSERT INTO users(
+                  email,name,pass_hash,pass_salt,is_admin,created_at,
+                  has_mystrix_plus,has_backtest,has_autotrader,has_chat,
+                  is_active,plan_expires_at,last_login,plan_name,plan_note
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    username,
+                    "Admin",
+                    h,
+                    salt,
+                    1,
+                    now,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    None,
+                    int(time.time()),
+                    "Admin",
+                    "System owner",
+                ),
+            )
+
 
 def hash_pw(password: str, salt_hex: str | None = None) -> tuple[str, str]:
     """Hash password with pbkdf2_hmac and return digest + salt."""
@@ -48,21 +110,33 @@ def get_user_from_sid(sid: str | None) -> Optional[Dict]:
         row = None
         try:
             row = con.execute(
-                "SELECT u.id,u.email,u.name,u.is_admin,s.expires_at FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.sid=?",
+                """
+                SELECT u.id,u.email,u.name,u.is_admin,u.has_mystrix_plus,u.has_backtest,u.has_autotrader,u.has_chat,
+                       u.is_active,u.plan_expires_at,u.last_login,u.plan_name,u.plan_note,s.expires_at
+                FROM sessions s
+                JOIN users u ON s.user_id=u.id
+                WHERE s.sid=?
+                """,
                 (sid,),
             ).fetchone()
         except Exception:
             # Backward-compat schema: token column
             try:
                 row = con.execute(
-                    "SELECT u.id,u.email,u.name,u.is_admin,s.expires_at FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.token=?",
+                    """
+                    SELECT u.id,u.email,u.name,u.is_admin,u.has_mystrix_plus,u.has_backtest,u.has_autotrader,u.has_chat,
+                           u.is_active,u.plan_expires_at,u.last_login,u.plan_name,u.plan_note,s.expires_at
+                    FROM sessions s
+                    JOIN users u ON s.user_id=u.id
+                    WHERE s.token=?
+                    """,
                     (sid,),
                 ).fetchone()
             except Exception:
                 row = None
         if not row:
             return None
-        if int(row[4]) < int(time.time()):
+        if int(row[-1]) < int(time.time()):
             # Try delete with either column name
             try:
                 con.execute("DELETE FROM sessions WHERE sid=?", (sid,))
@@ -72,4 +146,18 @@ def get_user_from_sid(sid: str | None) -> Optional[Dict]:
                 except Exception:
                     pass
             return None
-        return {"id": row[0], "email": row[1], "name": row[2], "is_admin": bool(row[3])}
+        return {
+            "id": row[0],
+            "email": row[1],
+            "name": row[2],
+            "is_admin": bool(row[3]),
+            "has_mystrix_plus": bool(row[4]),
+            "has_backtest": bool(row[5]),
+            "has_autotrader": bool(row[6]),
+            "has_chat": bool(row[7]),
+            "is_active": bool(row[8]),
+            "plan_expires_at": row[9],
+            "last_login": row[10],
+            "plan_name": row[11] or "",
+            "plan_note": row[12] or "",
+        }

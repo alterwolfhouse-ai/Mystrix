@@ -226,6 +226,7 @@ def init_schema(con: sqlite3.Connection) -> None:
         )
         """
     )
+    _ensure_user_columns(con)
     con.execute(
         """
         CREATE TABLE IF NOT EXISTS sessions(
@@ -269,7 +270,67 @@ def init_schema(con: sqlite3.Connection) -> None:
         )
         """
     )
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ledger_entries(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          principal_delta REAL NOT NULL DEFAULT 0,
+          profit_delta REAL NOT NULL DEFAULT 0,
+          kind TEXT NOT NULL,
+          note TEXT,
+          created_at INTEGER,
+          batch_id INTEGER,
+          created_by INTEGER,
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+        """
+    )
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS pool_yield_batches(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          amount REAL NOT NULL,
+          total_principal REAL NOT NULL,
+          allocated_to INTEGER NOT NULL,
+          note TEXT,
+          created_at INTEGER,
+          created_by INTEGER
+        )
+        """
+    )
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_audit(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          admin_id INTEGER,
+          action TEXT NOT NULL,
+          target_user_id INTEGER,
+          payload TEXT,
+          created_at INTEGER,
+          FOREIGN KEY(admin_id) REFERENCES users(id) ON DELETE SET NULL,
+          FOREIGN KEY(target_user_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+        """
+    )
 
+
+def _ensure_user_columns(con: sqlite3.Connection) -> None:
+    cols = {row[1] for row in con.execute("PRAGMA table_info(users)").fetchall()}
+    additions = {
+        "has_mystrix_plus": "INTEGER DEFAULT 0",
+        "has_backtest": "INTEGER DEFAULT 0",
+        "has_autotrader": "INTEGER DEFAULT 0",
+        "has_chat": "INTEGER DEFAULT 0",
+        "is_active": "INTEGER DEFAULT 1",
+        "plan_expires_at": "INTEGER DEFAULT NULL",
+        "last_login": "INTEGER DEFAULT NULL",
+        "plan_name": "TEXT DEFAULT ''",
+        "plan_note": "TEXT DEFAULT ''",
+    }
+    for col, decl in additions.items():
+        if col not in cols:
+            con.execute(f"ALTER TABLE users ADD COLUMN {col} {decl}")
 
 def upsert_ohlcv(df: pd.DataFrame, symbol: str, tf: str) -> int:
     if df is None or df.empty:

@@ -3,31 +3,69 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark light">
+    <meta name="color-scheme" content="dark light" />
     <title>MystriX - User</title>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=user02" />
     <script src="asset_picker.js"></script>
-</head>
+  </head>
   <body class="has-dock" id="user-page">
-    <main class="hero" id="home" style="max-width:1100px; margin:auto;">
-      <h1><span class="quote">"</span>MystriX<span class="quote">"</span> - User Panel</h1>
+    <div class="lightbar" aria-hidden="true"></div>
+    <div class="corner-logo" aria-hidden="true">
+      <img src="mystrix_logo.png" alt="MystriX logo" />
+    </div>
 
-      <section class="glass" style="margin-top:10px;">
+    <header class="site-header">
+      <div class="logo">WOLF HOUSE</div>
+      <nav class="nav">
+        <a href="index.html#home">Home</a>
+        <a href="products.html">Products</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="login.html">Login / Signup</a>
+        <a href="#" class="nav-join">Join</a>
+      </nav>
+    </header>
+
+    <main class="hero" id="home" style="max-width:1100px; margin:auto;">
+      <h1><span class="quote">"</span>MystriX<span class="quote">"</span> User Console</h1>
+      <p class="subcopy">Access core signals for free. Unlock MystriX+ for ML filtering, CPA backtesting, and live automation.</p>
+
+      <section class="glass">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+          <div>
+            <div style="font-size:12px; color:var(--muted);">Plan</div>
+            <div id="u-plan" style="font-weight:700;">Free Core</div>
+            <div id="u-plan-note" class="status" style="margin:4px 0 0;"></div>
+          </div>
+          <div style="margin-left:auto; display:flex; gap:8px;">
+            <a id="u-login" class="cta" href="login.html">Login</a>
+            <button id="u-logout" class="cta" type="button" style="display:none;">Logout</button>
+          </div>
+          <span id="srv-status" class="status">Server: <span class="status-dot dot-off"></span> Offline</span>
+        </div>
+      </section>
+
+      <section id="u-core" class="glass" style="margin-top:12px;">
+        <h2 style="margin:0 0 10px;">MystriX Core (Free)</h2>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
           <label style="flex:1 1 260px; display:flex; flex-direction:column; gap:6px;">
             <span>Symbol</span>
             <input id="u-symbol" type="text" list="u-symbols" placeholder="BTC/USDT" style="min-width:220px" />
             <datalist id="u-symbols"></datalist>
           </label>
-          <button id="u-fav" class="cta" type="button">★ Favorite</button>
-          <span id="srv-status" class="status">Server: <span class="status-dot dot-off"></span> Offline</span>
-          <div style="margin-left:auto; display:flex; gap:8px;">
-            <button id="btn-login" class="cta" type="button">Login</button>
-            <button id="btn-logout" class="cta" type="button" style="display:none;">Logout</button>
-          </div>
+          <button id="u-fav" class="cta" type="button">ミ. Favorite</button>
+          <button id="u-fetch" class="cta" type="button">Fetch Signal</button>
+          <button id="u-auto" class="cta" type="button">Start Auto</button>
+          <button id="u-alarm" class="cta" type="button">Alarm Off</button>
+          <p id="u-status" class="status"></p>
         </div>
+
+        <div class="chart-wrap" style="margin-top:12px;">
+          <canvas id="u-canvas" width="1000" height="360" style="max-width:100%"></canvas>
+        </div>
+        <div id="u-log" class="results"></div>
+
         <div style="display:flex; gap:10px; margin-top:10px; align-items:flex-end;">
           <label style="flex:1; display:flex; flex-direction:column; gap:6px;">
             <span>Missing coin? Tell us</span>
@@ -35,34 +73,86 @@
           </label>
           <button id="u-suggest" class="cta" type="button">Submit</button>
         </div>
+
+        <section class="glass" style="margin-top:12px;">
+          <h3 style="margin:0 0 6px;">Favorites</h3>
+          <div id="u-favs" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </section>
       </section>
 
-      <section id="u-chart" class="glass" style="margin-top:12px;">
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button id="u-fetch" class="cta" type="button">Fetch Signal</button>
-          <button id="u-auto" class="cta" type="button">Start Auto</button>
-          <button id="u-alarm" class="cta" type="button">Alarm Off</button>
-          <p id="u-status" class="status"></p>
+      <section id="u-premium" class="glass" style="margin-top:12px;">
+        <h2 style="margin:0 0 10px;">Premium Modules</h2>
+        <div class="product-grid">
+          <div class="product-card product-card-hover" data-lock="mystrix_plus">
+            <h3>MystriX+ Live</h3>
+            <p>ML filter + live divergence hunter with AutoTrader ready.</p>
+            <div class="tag-row">
+              <span class="tag">ML Filter</span>
+              <span class="tag">Live</span>
+            </div>
+            <div class="product-details">
+              <ul>
+                <li>ML confidence scoring</li>
+                <li>Live feed + trade monitor</li>
+                <li>AutoTrader bridge</li>
+              </ul>
+              <button id="btn-go-live" class="cta" type="button">Go Live on MystriX+</button>
+            </div>
+            <div class="lock-overlay">
+              <div class="lock-card">
+                <div class="lock-title">Locked</div>
+                <div class="lock-text">Upgrade to MystriX+ for ML filtering.</div>
+                <button class="cta btn-upgrade" type="button">Unlock MystriX+</button>
+              </div>
+            </div>
+          </div>
+          <div class="product-card product-card-hover" data-lock="backtest">
+            <h3>CPA Backtester</h3>
+            <p>Concurrent strategy backtesting and portfolio stress.</p>
+            <div class="tag-row">
+              <span class="tag">Backtest</span>
+              <span class="tag">Concurrent</span>
+            </div>
+            <div class="product-details">
+              <ul>
+                <li>Concurrent trade engine</li>
+                <li>Equity curve + metrics</li>
+                <li>Preset libraries</li>
+              </ul>
+              <button id="btn-go-cpa" class="cta" type="button">Run CPA Backtest</button>
+            </div>
+            <div class="lock-overlay">
+              <div class="lock-card">
+                <div class="lock-title">Locked</div>
+                <div class="lock-text">Upgrade to unlock CPA backtesting.</div>
+                <button class="cta btn-upgrade" type="button">Unlock CPA</button>
+              </div>
+            </div>
+          </div>
+          <div class="product-card product-card-hover" data-lock="autotrader">
+            <h3>AutoTrader</h3>
+            <p>Execute signals with disciplined risk controls.</p>
+            <div class="tag-row">
+              <span class="tag">Execution</span>
+              <span class="tag">Risk</span>
+            </div>
+            <div class="product-details">
+              <ul>
+                <li>Auto order placement</li>
+                <li>SL/TP management</li>
+                <li>Trade monitor</li>
+              </ul>
+              <button id="btn-go-auto" class="cta" type="button">Open AutoTrader</button>
+            </div>
+            <div class="lock-overlay">
+              <div class="lock-card">
+                <div class="lock-title">Locked</div>
+                <div class="lock-text">Upgrade to unlock AutoTrader.</div>
+                <button class="cta btn-upgrade" type="button">Unlock AutoTrader</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="chart-wrap" style="margin-top:8px;">
-          <canvas id="u-canvas" width="1000" height="360" style="max-width:100%"></canvas>
-        </div>
-        <div id="u-log" class="results"></div>
-      </section>
-
-      <section class="glass" style="margin-top:12px;">
-        <h3 style="margin:0 0 6px;">Favorites</h3>
-        <div id="u-favs" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
-      </section>
-
-      <section class="glass" style="margin-top:12px;">
-        <h3 style="margin:0 0 6px;">Backtest</h3>
-        <div class="form-grid">
-          <label><span>Start</span><input id="bt-start" type="date" /></label>
-          <label><span>End</span><input id="bt-end" type="date" /></label>
-        </div>
-        <div class="btn-row"><button id="bt-run" class="cta" type="button">Run Backtest</button><p id="bt-msg" class="status"></p></div>
-        <div id="bt-out" class="results"></div>
       </section>
     </main>
 
@@ -70,34 +160,35 @@
       <div class="dock-inner">
         <nav class="nav bottom-nav" aria-label="Primary">
           <a href="index.html#home">Home</a>
-          <a href="user.html#home" class="active">User</a>
-          <a id="nav-admin" href="admin.html#home" style="display:none;">Admin</a>
+          <a href="products.html">Products</a>
+          <a href="downloads.html">Downloads</a>
+          <a href="login.html">Login / Signup</a>
+          <a href="#" class="nav-join">Join</a>
         </nav>
         <div class="floorbar"><span class="floor-text">(c) <span class="year"></span> Wolf House. All rights reserved.</span></div>
       </div>
     </div>
 
-    <!-- Auth modal -->
-    <div id="auth-modal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:300;">
-      <div class="glass" style="width:min(92vw,420px); padding:18px;">
-        <h3 style="margin:0 0 8px;">Sign in</h3>
-        <div class="form-grid">
-          <label><span>Email</span><input id="auth-email" type="text" /></label>
-          <label><span>Password</span><input id="auth-pass" type="password" /></label>
-          <label><span>Name (signup)</span><input id="auth-name" type="text" /></label>
+    <div id="pricing-modal" class="pricing-modal">
+      <div class="pricing-card glass">
+        <h3>Unlock MystriX+</h3>
+        <p>Full access to ML filtering, CPA backtesting, and AutoTrader.</p>
+        <div class="pricing-line">
+          <span class="strike">$99</span>
+          <span class="price">$25</span>
+          <span class="badge mid">70% OFF</span>
         </div>
+        <p class="status">Click to proceed and we will follow up for activation.</p>
         <div class="btn-row">
-          <button id="btn-do-login" class="cta" type="button">Login</button>
-          <button id="btn-do-signup" class="cta" type="button">Sign up</button>
-          <button id="btn-auth-close" class="cta" type="button">Close</button>
+          <button id="pricing-pay" class="cta" type="button">Pay $25</button>
+          <button id="pricing-close" class="cta" type="button">Close</button>
         </div>
-        <p id="auth-msg" class="status"></p>
       </div>
     </div>
 
-    <script src="user.js"></script>
+    <script src="user.js?v=user02"></script>
+    <script src="script.js?v=user02"></script>
     <button class="theme-switch theme-switch-floating" data-theme-toggle type="button">Theme</button>
     <script src="theme_toggle.js" defer></script>
   </body>
   </html>
-

@@ -26,9 +26,10 @@ from routers.presets import router as presets_router
 from routers.universe import router as universe_router
 from routers.market import router as market_router
 from routers.admin import router as admin_router
-from services.auth import get_user_from_sid
+from services.auth import ensure_admin_user, get_user_from_sid
 
 app = FastAPI(title="TradeBoard API - Pine Long", version="3.0")
+ensure_admin_user()
 
 def _parse_origins(raw: str | None) -> list[str]:
     if not raw:

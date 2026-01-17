@@ -14,6 +14,9 @@
     if (!window.API_BASE && /(^|\.)mystrixwolf\.in$/i.test(host)) {
       window.API_BASE = 'https://api.mystrixwolf.in';
     }
+    if (!window.API_BASE && /(^|\.)wolfmystrix\.in$/i.test(host)) {
+      window.API_BASE = 'https://api.mystrixwolf.in';
+    }
     if (!window.API_BASE && /(^|\.)github\.io$/i.test(host)) {
       window.API_BASE = 'https://api.mystrixwolf.in';
     }

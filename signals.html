@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="MystriX signal proof timeline with wins, losses, and risk notes." />
+    <title>MystriX Signal Proof</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=signals01" />
+  </head>
+  <body class="has-dock">
+    <div class="lightbar" aria-hidden="true"></div>
+    <div class="corner-logo" aria-hidden="true">
+      <img src="mystrix_logo.png" alt="MystriX logo" />
+    </div>
+
+    <header class="site-header">
+      <div class="logo">WOLF HOUSE</div>
+      <nav class="nav">
+        <a href="index.html#home">Home</a>
+        <a href="products.html">Products</a>
+        <a href="login.html">Login / Signup</a>
+        <a href="#" class="nav-join">Join</a>
+      </nav>
+    </header>
+
+    <main class="hero" id="proof">
+      <h1>Signal Proof Timeline</h1>
+      <p class="subcopy">Transparent, time-stamped records of winners and losers. We show both to prove disciplined risk management.</p>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+        <a class="cta" href="index.html#home">Back to Home</a>
+        <a class="cta cta-join" href="#">Join the Briefing</a>
+      </div>
+    </main>
+
+    <section class="glass" style="max-width:1100px; margin: 12px auto 80px; padding: 18px 18px 24px;">
+      <h2 style="margin:0 0 10px;">Live Proof Feed</h2>
+      <p class="status">Entries show mid-trade updates, exits, and risk notes. All timestamps are logged for audit.</p>
+      <div class="timeline" aria-live="polite">
+        <div class="timeline-item">
+          <div class="timeline-header">
+            <div class="timeline-title">BTC/USDT — Divergence Long</div>
+            <div class="timeline-time">2026-01-15 09:41 PM IST</div>
+          </div>
+          <div class="timeline-badges">
+            <span class="badge mid">Mid-Trade</span>
+            <span class="badge">Entry 43120</span>
+            <span class="badge">Stop 42680</span>
+          </div>
+          <div class="timeline-note">Holding with tightened stop. Market structure intact.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-header">
+            <div class="timeline-title">BTC/USDT — Exit</div>
+            <div class="timeline-time">2026-01-15 10:02 PM IST</div>
+          </div>
+          <div class="timeline-badges">
+            <span class="badge win">WIN +1.6R</span>
+            <span class="badge">Exit 43810</span>
+          </div>
+          <div class="timeline-note">Targets hit, exit confirmed. Cooldown applied.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-header">
+            <div class="timeline-title">ETH/USDT — Divergence Short</div>
+            <div class="timeline-time">2026-01-14 08:10 PM IST</div>
+          </div>
+          <div class="timeline-badges">
+            <span class="badge mid">Mid-Trade</span>
+            <span class="badge">Entry 2460</span>
+            <span class="badge">Stop 2498</span>
+          </div>
+          <div class="timeline-note">Risk capped at 0.5% equity. Monitoring for exit signal.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-header">
+            <div class="timeline-title">ETH/USDT — Stop Out</div>
+            <div class="timeline-time">2026-01-14 08:37 PM IST</div>
+          </div>
+          <div class="timeline-badges">
+            <span class="badge loss">LOSS -1.0R</span>
+            <span class="badge">Exit 2498</span>
+          </div>
+          <div class="timeline-note">Stop respected. Loss within plan. Next signal queued.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-header">
+            <div class="timeline-title">BNB/USDT — Divergence Long</div>
+            <div class="timeline-time">2026-01-13 05:52 PM IST</div>
+          </div>
+          <div class="timeline-badges">
+            <span class="badge win">WIN +2.1R</span>
+            <span class="badge">Entry 310.6</span>
+            <span class="badge">Exit 318.9</span>
+          </div>
+          <div class="timeline-note">Momentum aligned with HTF bias. Full take-profit hit.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-header">
+            <div class="timeline-title">SOL/USDT — Divergence Short</div>
+            <div class="timeline-time">2026-01-12 03:28 PM IST</div>
+          </div>
+          <div class="timeline-badges">
+            <span class="badge loss">LOSS -0.6R</span>
+            <span class="badge">Entry 94.2</span>
+            <span class="badge">Exit 95.6</span>
+          </div>
+          <div class="timeline-note">Stop hit quickly. Trade logged and closed.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="bottom-dock" role="contentinfo">
+      <div class="dock-inner">
+        <nav class="nav bottom-nav" aria-label="Primary">
+          <a href="index.html#home">Home</a>
+          <a href="products.html">Products</a>
+          <a href="login.html" title="Open login">Login / Signup</a>
+          <a href="#" class="nav-join">Join</a>
+        </nav>
+        <div class="floorbar"><span class="floor-text">(c) <span class="year"></span> Wolf House. All rights reserved.</span></div>
+      </div>
+    </div>
+
+    <script src="script.js?v=signals01"></script>
+    <button class="theme-switch theme-switch-floating" data-theme-toggle type="button">Theme</button>
+    <script src="theme_toggle.js" defer></script>
+  </body>
+</html>

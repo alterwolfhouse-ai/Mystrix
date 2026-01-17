@@ -1,191 +1,717 @@
-const API = (typeof location !== 'undefined' && location.origin.startsWith('http')) ? location.origin : 'http://127.0.0.1:8000';
+function apiBase(){
+  if (typeof window !== 'undefined' && window.API_BASE) return window.API_BASE;
+  try{
+    const q = new URLSearchParams(location.search);
+    const api = q.get('api');
+    if (api){
+      window.API_BASE = api;
+      return api;
+    }
+  }catch(_){}
+  try{
+    const host = location.hostname || '';
+    if (!window.API_BASE && /(^|\.)mystrixwolf\.in$/i.test(host)) {
+      window.API_BASE = 'https://api.mystrixwolf.in';
+    }
+    if (!window.API_BASE && /(^|\.)wolfmystrix\.in$/i.test(host)) {
+      window.API_BASE = 'https://api.mystrixwolf.in';
+    }
+    if (!window.API_BASE && /(^|\.)github\.io$/i.test(host)) {
+      window.API_BASE = 'https://api.mystrixwolf.in';
+    }
+    if (!window.API_BASE && (host === '127.0.0.1' || host === 'localhost')) {
+      window.API_BASE = location.origin;
+    }
+  }catch(_){}
+  try{
+    if(location.protocol === 'file:' && !window.API_BASE){
+      window.API_BASE = 'http://127.0.0.1:8000';
+    }
+  }catch(_){}
+  return (window.API_BASE || ((typeof location !== 'undefined' && location.origin.startsWith('http'))
+    ? location.origin
+    : 'http://127.0.0.1:8000'));
+}
+const API = apiBase();
 const $ = (s)=>document.querySelector(s);
 
-async function fetchJSON(path){ const r=await fetch(API+path,{credentials:'include'}); if(!r.ok) throw new Error(await r.text()); return await r.json(); }
-
-async function render(){ try{
-  const users = (await fetchJSON('/admin/users')).users;
-  const sug = (await fetchJSON('/admin/suggestions')).suggestions;
-  $('#a-users').innerHTML = `<table class="trades"><thead><tr><th>ID</th><th>Email</th><th>Name</th><th>Admin</th><th>Created</th></tr></thead><tbody>${users.map(u=>`<tr><td>${u.id}</td><td>${u.email}</td><td>${u.name||''}</td><td>${u.is_admin?'yes':'no'}</td><td>${u.created_at||''}</td></tr>`).join('')}</tbody></table>`;
-  $('#a-sug').innerHTML = `<table class="trades"><thead><tr><th>ID</th><th>User</th><th>Text</th><th>Created</th><th>Resolved</th><th></th></tr></thead><tbody>${sug.map(s=>`<tr><td>${s.id}</td><td>${s.email||''}</td><td>${s.text}</td><td>${s.created_at||''}</td><td>${s.resolved?'yes':'no'}</td><td>${s.resolved?'':`<button class='cta' data-id='${s.id}'>Resolve</button>`}</td></tr>`).join('')}</tbody></table>`;
-  $('#a-sug').querySelectorAll('button[data-id]').forEach(b=> b.addEventListener('click', async ()=>{ const id=b.getAttribute('data-id'); try{ const r=await fetch(API+`/admin/suggestions/resolve?id=${id}`,{method:'POST',credentials:'include'}); if(r.ok) render(); }catch(_){ } }));
-  $('#a-msg').textContent='';
-}catch(e){ $('#a-msg').textContent=String(e); }
+async function fetchJSON(path, opts){
+  const r = await fetch(API + path, {credentials:'include', ...opts});
+  if(!r.ok) throw new Error(await r.text());
+  return await r.json();
 }
 
-$('#a-refresh')?.addEventListener('click', render);
-render();
-
-// Defaults editor
-async function loadDefaults(){ try{ const r=await fetch(API+'/defaults'); if(!r.ok) throw new Error(await r.text()); const d=await r.json(); $('#def-tf').value=d.timeframe_hist||'3m'; $('#def-json').value=JSON.stringify(d.overrides||{}, null, 2); $('#def-msg').textContent='Loaded.'; }catch(e){ $('#def-msg').textContent=String(e);} }
-async function saveDefaults(){ try{ const tf=$('#def-tf').value.trim()||'3m'; let ov={}; try{ ov=JSON.parse($('#def-json').value||'{}'); }catch(e){ $('#def-msg').textContent='Invalid JSON'; return; } const r=await fetch(API+'/admin/defaults',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include', body:JSON.stringify({timeframe_hist:tf, overrides:ov})}); if(!r.ok) throw new Error(await r.text()); $('#def-msg').textContent='Saved.'; }catch(e){ $('#def-msg').textContent=String(e);} }
-document.getElementById('def-load')?.addEventListener('click', loadDefaults);
-document.getElementById('def-save')?.addEventListener('click', saveDefaults);
-loadDefaults();
-
-// Deep backtest uses current Magic settings persisted in localStorage
-function overridesFromLocal(){ try{ const raw=localStorage.getItem('pine_settings_v1'); if(!raw) return {}; const d=JSON.parse(raw); return {
-  rsi_length:Number(d.rsi_length||14), rsi_overbought:Number(d.rsi_ob||79), rsi_oversold:Number(d.rsi_os||27),
-  lookbackLeft:Number(d.lb_left||5), lookbackRight:Number(d.lb_right||5), rangeLower:Number(d.range_low||5), rangeUpper:Number(d.range_up||60),
-  use_pct_stop:Number(d.pct_stop||1.8)/100, max_wait_bars:Number(d.max_wait||25), cooldownBars:(d.cd_en?Number(d.cooldown||15):0),
-  initial_capital:Number(d.initial||10000), percent_risk:Number(d.risk_pct||10)/100,
-  enableHTFGate: !!d.htf_en, htfTF: (d.htf_tf||'30m'), htf_pct_stop: Number(d.htf_stop||20)/100,
-  htf_rsi_length:Number(d.htf_rsi_length||14), htf_rsi_overbought:Number(d.htf_rsi_ob||79), htf_rsi_oversold:Number(d.htf_rsi_os||27),
-  htf_lookbackLeft:Number(d.htf_lb_left||5), htf_lookbackRight:Number(d.htf_lb_right||5), htf_rangeLower:Number(d.htf_range_low||5), htf_rangeUpper:Number(d.htf_range_up||60), htf_max_wait_bars:Number(d.htf_max_wait||25)
-}; }catch(_){ return {}; } }
-
-// Deep backtest
-async function runDeep(){ const sym=$('#db-symbol').value.trim()||'BTC/USDT'; const s=$('#db-start').value||null; const e=$('#db-end').value||null; const msg=$('#db-msg'); const out=$('#db-out'); msg.textContent='Running...'; try{ const body={symbol:sym, timeframe:'3m', overrides: overridesFromLocal()}; if(s) body.start=s; if(e) body.end=e; const r=await fetch(API+'/backtest/deep',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include', body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); const data=await r.json(); msg.textContent='Done.'; out.innerHTML=renderMetrics(data.metrics)+renderTrades(data.trades); }catch(e){ msg.textContent=String(e);} }
-document.getElementById('db-run')?.addEventListener('click', runDeep);
-const today=new Date(); const monthsAgo=new Date(); monthsAgo.setMonth(today.getMonth()-6); document.getElementById('db-start').value=today.toISOString().slice(0,10); document.getElementById('db-end').value=today.toISOString().slice(0,10);
-
-function renderMetrics(m){ const keys=[['Total Return (%)','Return'],['Num Trades','Trades'],['Win Rate (%)','Win Rate'],['Avg P&L','Avg P&L'],['Sharpe','Sharpe'],['Max Drawdown (%)','Max DD'],['Ending Equity','Equity']]; const cards=keys.map(([k,l])=>{ const v=(m&&m[k]!==undefined)?m[k]:'-'; return `<div class="metric"><div class="label">${l}</div><div class="value">${v}</div></div>`;}).join(''); return `<div class="metrics">${cards}</div>`; }
-function renderTrades(items){ if(!items||!items.length) return '<p class="status">No trades.</p>'; const head='<tr><th>time</th><th>type</th><th>price</th></tr>'; const rows=items.slice(-200).map(t=>{ const price=t.price!==undefined?Number(t.price).toFixed(2):''; return `<tr><td>${t.t||''}</td><td>${t.type||''}</td><td>${price}</td></tr>`;}).join(''); return `<table class="trades"><thead>${head}</thead><tbody>${rows}</tbody></table>`; }
-
-// Gate snapshot
-async function refreshGate(){ const out=$('#gate-out'); out.innerHTML='<p class="status">Loading gate...</p>'; try{ const r=await fetch(API+'/gate/snapshot'); if(!r.ok) throw new Error(await r.text()); const d=await r.json(); const rows=(d.symbols||[]).map(s=>`<tr><td>${s.symbol}</td><td>${(s.score??0).toFixed(3)}</td><td>${(s.vroc_pct??0).toFixed(3)}</td></tr>`).join(''); const table=`<table class="trades"><thead><tr><th>Symbol</th><th>Score</th><th>VROC pct</th></tr></thead><tbody>${rows}</tbody></table>`; out.innerHTML=table; }catch(e){ out.innerHTML=`<p class='status'>${String(e)}</p>`; } }
-document.getElementById('gate-refresh')?.addEventListener('click', refreshGate);
-refreshGate();
-// API status dot updater (same as Magic)
-async function checkApi(){
-  const status = document.getElementById('srv-status');
-  const dot = status?.querySelector('.status-dot');
-  const ctrl = new AbortController();
-  const to = setTimeout(()=>ctrl.abort(), 3500);
+async function me(){
   try{
-    const res = await fetch(API + '/healthz', {signal: ctrl.signal});
-    clearTimeout(to);
-    const ok = res.ok;
-    if(dot){ dot.classList.toggle('dot-on', ok); dot.classList.toggle('dot-off', !ok); }
-    if(status) status.innerHTML = `API: <span class="status-dot ${ok?'dot-on':'dot-off'}"></span> ${ok?'Online':'Not running'}`;
-  } catch(_){
-    clearTimeout(to);
-    if(dot){ dot.classList.add('dot-off'); dot.classList.remove('dot-on'); }
-    if(status) status.innerHTML = 'API: <span class="status-dot dot-off"></span> Not running';
+    const r = await fetch(API + '/me', {credentials:'include'});
+    if(!r.ok) return null;
+    return (await r.json()).user;
+  }catch(_){
+    return null;
   }
 }
-(document.getElementById('recheck')||{}).addEventListener?.('click', checkApi);
-setTimeout(checkApi, 250);
-(document.getElementById('restart')||{}).addEventListener?.('click', async ()=>{ try{ await fetch(API+'/restart',{method:'POST'});}catch(_){}});
 
-// Local Backtester (Admin)
-function getVal(id){ return document.getElementById(id)?.value; }
-function isChecked(id){ return !!document.getElementById(id)?.checked; }
-async function runBacktest(){
-  const results = document.getElementById('results');
-  const btn = document.getElementById('run-backtest');
+async function requireAdmin(){
+  const user = await me();
+  const overlay = $('#admin-auth');
+  if(!user || !user.is_admin){
+    overlay?.classList.add('active');
+    return false;
+  }
+  overlay?.classList.remove('active');
+  return true;
+}
+
+$('#admin-login')?.addEventListener('click', async ()=>{
+  const u = ($('#admin-user').value || '').trim();
+  const p = $('#admin-pass').value || '';
+  const msg = $('#admin-auth-msg');
+  msg.textContent = 'Checking...';
   try{
-    if(results) results.innerHTML = '<p class="status">Running backtest...</p>';
-    if(btn){ btn.disabled=true; btn.textContent='Working...'; }
-    const symbols = (getVal('bt-symbols')||'BTC/USDT').split(',').map(s=>s.trim()).filter(Boolean);
-    const overrides = {
-      timeframe_hist: getVal('bt-tf')||'3m',
-      rsi_length: Number(getVal('bt-rsi-length')||14),
-      rsi_overbought: Number(getVal('bt-rsi-ob')||79),
-      rsi_oversold: Number(getVal('bt-rsi-os')||27),
-      lookbackLeft: Number(getVal('bt-lb-left')||5),
-      lookbackRight: Number(getVal('bt-lb-right')||5),
-      rangeLower: Number(getVal('bt-range-low')||5),
-      rangeUpper: Number(getVal('bt-range-up')||60),
-      use_pct_stop: Number(getVal('bt-pct-stop')||1.8)/100,
-      max_wait_bars: Number(getVal('bt-max-wait')||25),
-      cooldownBars: isChecked('bt-cooldown-en') ? Number(getVal('bt-cooldown')||15) : 0,
-      initial_capital: Number(getVal('bt-initial')||10000),
-      percent_risk: Number(getVal('bt-risk-pct')||10)/100,
-      gate_enable: isChecked('gate-enable'),
-      gate_base_tf: getVal('gate-base-tf')||'1h',
-      gate_vroc_span: Number(getVal('gate-vroc-span')||8),
-      gate_threshold: Number(getVal('gate-threshold')||0.65)
-    };
-    const payload = { symbols, start: getVal('bt-start')||'', end: getVal('bt-end')||'', engine: (getVal('bt-engine')||'long'), overrides };
-    const res = await fetch(API+'/backtest',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-    if(!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    if(results) results.innerHTML = renderMetrics(data.metrics) + renderTrades(data.trades);
-  } catch(e){ if(results) results.innerHTML = `<p class="status">${String(e)}</p>`; }
-  finally{ if(btn){ btn.disabled=false; btn.textContent='Run Backtest'; } try{ const ring=document.getElementById('bt-progress'); if(ring){ setTimeout(()=>{ ring.style.display='none'; }, 600); ring.style.background = 'conic-gradient(var(--accent,#7c4dff) 360deg, rgba(255,255,255,0.08) 0)'; const lab=document.getElementById('bt-progress-label'); if(lab) lab.textContent='100%'; } }catch(_){ } }
+    const r = await fetch(API + '/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify({email: u, password: p}),
+    });
+    if(!r.ok) throw new Error(await r.text());
+    msg.textContent = 'Access granted.';
+    const ok = await requireAdmin();
+    if(ok) render();
+  }catch(e){
+    msg.textContent = String(e);
+  }
+});
+
+const state = {
+  users: [],
+  suggestions: [],
+  ledgerSummary: null,
+  ledgerEvents: [],
+  ledgerFilterUserId: null,
+  auditFilterUserId: null,
+  auditEvents: [],
+};
+
+function collectUserPayload(id){
+  const table = $('#admin-users-table');
+  if(!table) return null;
+  const flags = {};
+  table.querySelectorAll(`input[type="checkbox"][data-id="${id}"]`).forEach(cb=>{
+    flags[cb.getAttribute('data-flag')] = cb.checked;
+  });
+  const planName = table.querySelector(`input[data-plan="plan_name"][data-id="${id}"]`)?.value || '';
+  const planNote = table.querySelector(`input[data-plan="plan_note"][data-id="${id}"]`)?.value || '';
+  const planDate = table.querySelector(`input[data-plan="plan_expires_at"][data-id="${id}"]`)?.value || '';
+  const planExpires = planDate ? Math.floor(new Date(planDate).getTime() / 1000) : null;
+  return {
+    user_id: Number(id),
+    has_mystrix_plus: !!flags.has_mystrix_plus,
+    has_backtest: !!flags.has_backtest,
+    has_autotrader: !!flags.has_autotrader,
+    has_chat: !!flags.has_chat,
+    is_active: !!flags.is_active,
+    plan_expires_at: planExpires,
+    plan_name: planName,
+    plan_note: planNote,
+  };
 }
-(document.getElementById('run-backtest')||{}).addEventListener?.('click', runBacktest);
 
-// ---- Presets (Bull/Bear/Chop) per symbol ----
-(function(){
-  const KEY = 'asset_presets_v1';
-  function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(_){ return {}; } }
-  function save(obj){ localStorage.setItem(KEY, JSON.stringify(obj)); }
-  function getSymbol(){ const v=document.getElementById('bt-symbols')?.value||''; return (v.split(',')[0]||'').trim().toUpperCase(); }
-  function readParams(){ const G=id=>document.getElementById(id); return {
-    rsi_length: Number(G('bt-rsi-length')?.value||14),
-    rsi_overbought: Number(G('bt-rsi-ob')?.value||79),
-    rsi_oversold: Number(G('bt-rsi-os')?.value||27),
-    lookbackLeft: Number(G('bt-lb-left')?.value||5),
-    lookbackRight: Number(G('bt-lb-right')?.value||5),
-    rangeLower: Number(G('bt-range-low')?.value||5),
-    rangeUpper: Number(G('bt-range-up')?.value||60),
-    use_pct_stop: Number(G('bt-pct-stop')?.value||1.8)/100,
-    max_wait_bars: Number(G('bt-max-wait')?.value||25),
-    cooldownBars: (document.getElementById('bt-cooldown-en')?.checked? Number(G('bt-cooldown')?.value||15):0),
-    initial_capital: Number(G('bt-initial')?.value||10000),
-    percent_risk: Number(G('bt-risk-pct')?.value||10)/100,
-  }; }
-  function writeParams(p){ const S=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=String(v); }; const C=(id,v)=>{ const el=document.getElementById(id); if(el) el.checked=!!v; };
-    if(!p) return;
-    S('bt-rsi-length', p.rsi_length); S('bt-rsi-ob', p.rsi_overbought); S('bt-rsi-os', p.rsi_oversold);
-    S('bt-lb-left', p.lookbackLeft); S('bt-lb-right', p.lookbackRight);
-    S('bt-range-low', p.rangeLower); S('bt-range-up', p.rangeUpper);
-    S('bt-pct-stop', (Number(p.use_pct_stop||0)*100).toFixed(2));
-    S('bt-max-wait', p.max_wait_bars);
-    const cd = Number(p.cooldownBars||0); C('bt-cooldown-en', cd>0); S('bt-cooldown', cd||0);
-    S('bt-initial', p.initial_capital); S('bt-risk-pct', (Number(p.percent_risk||0)*100).toFixed(2));
+async function saveUser(id){
+  const payload = collectUserPayload(id);
+  if(!payload) return;
+  try{
+    await fetchJSON('/admin/users/update', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    $('#admin-msg').textContent = `User ${id} saved.`;
+  }catch(e){
+    $('#admin-msg').textContent = String(e);
   }
-  function setActive(slot){ ['bull','bear','chop'].forEach(s=>{
-    const el=document.getElementById('preset-'+s); if(!el) return; el.classList.toggle('active', s===slot);
-  }); document.getElementById('preset-status')?.replaceChildren(document.createTextNode('Preset: '+slot.toUpperCase())); }
-  function apply(slot){ const sym=getSymbol(); const store=load(); const p=store?.[sym]?.[slot]; if(p) writeParams(p); setActive(slot); localStorage.setItem('last_preset_slot', slot); }
-  function saveCurrent(slot){ const sym=getSymbol(); if(!sym){ notify?.('Enter a symbol to save preset','warn'); return; } const store=load(); store[sym] = store[sym]||{}; store[sym][slot] = readParams(); save(store); notify?.(`Saved ${slot.toUpperCase()} preset for ${sym}`,'info'); }
-  // Bind UI
-  document.getElementById('preset-bull')?.addEventListener('click', ()=>apply('bull'));
-  document.getElementById('preset-bear')?.addEventListener('click', ()=>apply('bear'));
-  document.getElementById('preset-chop')?.addEventListener('click', ()=>apply('chop'));
-  document.getElementById('preset-save')?.addEventListener('click', ()=>{
-    const slot = (prompt('Save preset to which slot? (bull / bear / chop)','bull')||'').trim().toLowerCase();
-    if(!['bull','bear','chop'].includes(slot)) { notify?.('Invalid slot','warn'); return; }
-    saveCurrent(slot);
-  });
-  // Auto-apply when symbol changes or page loads
-  const symEl = document.getElementById('bt-symbols');
-  symEl?.addEventListener('change', ()=>{ const slot=localStorage.getItem('last_preset_slot')||'bull'; apply(slot); });
-  setTimeout(()=>{ const slot=localStorage.getItem('last_preset_slot')||'bull'; apply(slot); }, 300);
-})();
+}
 
-// --- Progress helpers (UI only) ---
-function setRing(el, pct){ if(!el) return; const deg = Math.max(0, Math.min(100, pct))*3.6; el.style.background = `conic-gradient(var(--accent,#7c4dff) ${deg}deg, rgba(255,255,255,0.08) 0)`; const lab=el.querySelector('span'); if(lab) lab.textContent = `${Math.round(Math.max(0,Math.min(100,pct)))}%`; }
-function animateProgress(el, startPct, endPct, ms){ const t0=Date.now(); el.style.display='inline-block'; function tick(){ const dt=Date.now()-t0; const p = Math.min(1, dt/ms); const v = startPct + (endPct-startPct)*p; setRing(el, v); if(p<1) requestAnimationFrame(tick); } tick(); }
-
-// Hook backtest run to show a progress ring (UI-driven)
-(function(){ const btn=document.getElementById('run-backtest'); const ring=document.getElementById('bt-progress'); if(!btn||!ring) return; const orig = (window._runBacktestOrig || null);
-  // Wrap existing handler
-})();
-
-// Re-bind runBacktest to include progress animation (without changing server)
-(function(){ const btn=document.getElementById('run-backtest'); if(!btn) return; const ring=document.getElementById('bt-progress'); const lab=document.getElementById('bt-progress-label');
-  const old = (document.getElementById('run-backtest').onclick || null);
-  async function run(){ try{ if(ring){ setRing(ring,0); ring.style.display='inline-block'; animateProgress(ring, 0, 92, 15000); } }catch(_){}
-    // Call existing handler by dispatching a click to original binding if any
-    try{ const ev = new Event('click'); if(old){ old(ev);} }catch(_){ }
+function fmtTime(ts){
+  if(!ts) return '--';
+  try{
+    const d = new Date(ts * 1000);
+    return d.toLocaleString();
+  }catch(_){
+    return '--';
   }
-  // Ensure our handler triggers before admin.js binding
-  btn.addEventListener('click', run, {capture:true});
-})();
+}
 
-// Warm Cache UI (client-side animation + CLI guidance)
-(function(){ const btn=document.getElementById('warm-run'); if(!btn) return; const ring=document.getElementById('warm-progress'); const msg=document.getElementById('warm-msg');
-  btn.addEventListener('click', async ()=>{
-    try{
-      msg.textContent='Warming (local cache) - run CLI for fastest mode or keep this tab open.';
-      setRing(ring,0); ring.style.display='inline-block';
-      // Animate to completion; real warm should be done via CLI or server endpoint when added
-      let p=0; const id=setInterval(()=>{ p=Math.min(100, p+2+Math.random()*3); setRing(ring,p); if(p>=100){ clearInterval(id); msg.textContent='Warm complete (UI). For full warm, use the CLI above.'; } }, 600);
-    }catch(e){ msg.textContent=String(e); }
+function fmtNum(val, digits=2){
+  const num = Number(val || 0);
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   });
-})();
+}
 
+function fmtPct(val){
+  const num = Number(val || 0) * 100;
+  return `${num.toFixed(2)}%`;
+}
+
+function renderStats(){
+  const users = state.users;
+  const total = users.length;
+  const active = users.filter(u=>u.is_active).length;
+  const premium = users.filter(u=>u.has_mystrix_plus).length;
+  const backtest = users.filter(u=>u.has_backtest).length;
+  const autotrader = users.filter(u=>u.has_autotrader).length;
+  const disabled = users.filter(u=>!u.is_active).length;
+
+  const cards = [
+    {label:'Total Users', value: total},
+    {label:'Active', value: active},
+    {label:'Disabled', value: disabled},
+    {label:'MystriX+', value: premium},
+    {label:'Backtest', value: backtest},
+    {label:'AutoTrader', value: autotrader},
+  ];
+  $('#admin-stats').innerHTML = cards.map(c=>`
+    <div class="stat-card">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value">${c.value}</div>
+    </div>
+  `).join('');
+}
+
+function renderLedgerStats(){
+  const box = $('#ledger-stats');
+  if(!box) return;
+  const s = state.ledgerSummary || {};
+  const cards = [
+    {label:'Pool Principal', value: fmtNum(s.total_principal)},
+    {label:'Pool Profit', value: fmtNum(s.total_profit)},
+    {label:'Total Deposits', value: fmtNum(s.total_deposits)},
+    {label:'Total Withdrawals', value: fmtNum(s.total_withdrawals)},
+    {label:'Profit Allocated', value: fmtNum(s.total_profit_allocated)},
+    {label:'Profit Paid', value: fmtNum(s.total_profit_withdrawn)},
+    {label:'Active Principals', value: s.active_principal_users || 0},
+  ];
+  box.innerHTML = cards.map(c=>`
+    <div class="stat-card">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value">${c.value}</div>
+    </div>
+  `).join('');
+
+  const batch = $('#ledger-batch');
+  if(batch){
+    if(s.last_batch){
+      batch.innerHTML = `
+        <strong>Last Yield Batch</strong>
+        <div>Amount: ${fmtNum(s.last_batch.amount)} | Principal Base: ${fmtNum(s.last_batch.total_principal)} | Users: ${s.last_batch.allocated_to}</div>
+        <div>${s.last_batch.note ? `Note: ${s.last_batch.note} | ` : ''}${fmtTime(s.last_batch.created_at)}</div>
+      `;
+    }else{
+      batch.textContent = 'No yield allocations yet.';
+    }
+  }
+}
+
+function applyFilters(){
+  const query = ($('#user-search').value || '').trim().toLowerCase();
+  const planFilter = $('#filter-plan').value;
+  const activeFilter = $('#filter-active').value;
+
+  return state.users.filter(u=>{
+    const searchable = `${u.email||''} ${u.name||''} ${u.plan_name||''} ${u.plan_note||''}`.toLowerCase();
+    if(query && !searchable.includes(query)) return false;
+    if(planFilter === 'premium' && !u.has_mystrix_plus) return false;
+    if(planFilter === 'free' && u.has_mystrix_plus) return false;
+    if(activeFilter === 'active' && !u.is_active) return false;
+    if(activeFilter === 'disabled' && u.is_active) return false;
+    return true;
+  });
+}
+
+function renderUsers(){
+  const rows = applyFilters().map(u=>{
+    const expiry = u.plan_expires_at ? new Date(u.plan_expires_at * 1000).toISOString().slice(0,10) : '';
+    const principal = fmtNum(u.principal_balance);
+    const profit = fmtNum(u.profit_balance);
+    const net = fmtNum(u.net_balance);
+    const ratio = fmtPct(u.principal_ratio);
+    const deposits = fmtNum(u.total_deposits);
+    const withdrawals = fmtNum(u.total_withdrawals);
+    const profitAlloc = fmtNum(u.total_profit);
+    const profitPaid = fmtNum(u.total_profit_withdrawn);
+    const created = fmtTime(u.created_at);
+    return `
+      <tr>
+        <td><input type="checkbox" class="bulk-select" data-id="${u.id}"/></td>
+        <td>${u.id}</td>
+        <td>${u.email}</td>
+        <td>${u.name || ''}</td>
+        <td>${principal}</td>
+        <td>${profit}</td>
+        <td>${net}</td>
+        <td>${ratio}</td>
+        <td>${deposits}</td>
+        <td>${withdrawals}</td>
+        <td>${profitAlloc}</td>
+        <td>${profitPaid}</td>
+        <td>${fmtTime(u.last_deposit_at)}</td>
+        <td>${fmtTime(u.last_withdrawal_at)}</td>
+        <td>${fmtTime(u.last_profit_at)}</td>
+        <td>
+          <label class="switch"><input type="checkbox" data-flag="is_active" data-id="${u.id}" ${u.is_active?'checked':''}/><span class="slider"></span></label>
+        </td>
+        <td>
+          <label class="switch"><input type="checkbox" data-flag="has_mystrix_plus" data-id="${u.id}" ${u.has_mystrix_plus?'checked':''}/><span class="slider"></span></label>
+        </td>
+        <td>
+          <label class="switch"><input type="checkbox" data-flag="has_backtest" data-id="${u.id}" ${u.has_backtest?'checked':''}/><span class="slider"></span></label>
+        </td>
+        <td>
+          <label class="switch"><input type="checkbox" data-flag="has_autotrader" data-id="${u.id}" ${u.has_autotrader?'checked':''}/><span class="slider"></span></label>
+        </td>
+        <td>
+          <label class="switch"><input type="checkbox" data-flag="has_chat" data-id="${u.id}" ${u.has_chat?'checked':''}/><span class="slider"></span></label>
+        </td>
+        <td><input type="text" data-plan="plan_name" data-id="${u.id}" value="${u.plan_name||''}" placeholder="Plan name"/></td>
+        <td><input type="text" data-plan="plan_note" data-id="${u.id}" value="${u.plan_note||''}" placeholder="Plan note"/></td>
+        <td><input type="date" data-plan="plan_expires_at" data-id="${u.id}" value="${expiry}"/></td>
+        <td>${fmtTime(u.last_login)}</td>
+        <td>${created}</td>
+        <td>
+          <button class="cta save-user" data-id="${u.id}">Save</button>
+          <button class="cta reset-pass" data-id="${u.id}">Reset</button>
+          <button class="cta force-logout" data-id="${u.id}">Logout</button>
+          <button class="cta ledger-user" data-id="${u.id}">Ledger</button>
+          <button class="cta danger delete-user" data-id="${u.id}">Delete</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  $('#admin-users-table').innerHTML = `
+    <table class="trades">
+      <thead>
+        <tr>
+          <th>Select</th>
+          <th>ID</th>
+          <th>Email</th>
+          <th>Name</th>
+          <th>Principal</th>
+          <th>Profit</th>
+          <th>Net</th>
+          <th>Ratio</th>
+          <th>Deposits</th>
+          <th>Withdrawals</th>
+          <th>Profit Alloc</th>
+          <th>Profit Paid</th>
+          <th>Last Deposit</th>
+          <th>Last Withdraw</th>
+          <th>Last Profit</th>
+          <th>Active</th>
+          <th>MystriX+</th>
+          <th>Backtest</th>
+          <th>AutoTrader</th>
+          <th>Chat</th>
+          <th>Plan</th>
+          <th>Note</th>
+          <th>Expires</th>
+          <th>Last Login</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="26">No users found.</td></tr>`}</tbody>
+    </table>
+  `;
+
+  $('#admin-users-table').querySelectorAll('.save-user').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      await saveUser(id);
+      await loadUsers();
+    });
+  });
+
+  $('#admin-users-table').querySelectorAll('.reset-pass').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      const next = prompt('New password for user ' + id + '?');
+      if(!next) return;
+      try{
+        await fetchJSON('/admin/users/reset_password', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({user_id: id, new_password: next}),
+        });
+        $('#admin-msg').textContent = `Password reset for user ${id}.`;
+      }catch(e){
+        $('#admin-msg').textContent = String(e);
+      }
+    });
+  });
+
+  $('#admin-users-table').querySelectorAll('.force-logout').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      try{
+        await fetchJSON('/admin/users/logout?user_id=' + id, {method:'POST'});
+        $('#admin-msg').textContent = `Sessions cleared for user ${id}.`;
+      }catch(e){
+        $('#admin-msg').textContent = String(e);
+      }
+    });
+  });
+
+  $('#admin-users-table').querySelectorAll('.delete-user').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      const ok = confirm(`Delete user ${id}? This cannot be undone.`);
+      if(!ok) return;
+      try{
+        await fetchJSON('/admin/users/delete', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({user_id: id}),
+        });
+        $('#admin-msg').textContent = `User ${id} deleted.`;
+        await loadUsers();
+      }catch(e){
+        $('#admin-msg').textContent = String(e);
+      }
+    });
+  });
+
+  $('#admin-users-table').querySelectorAll('input[type="checkbox"][data-id]').forEach(cb=>{
+    cb.addEventListener('change', async ()=>{
+      const id = Number(cb.getAttribute('data-id'));
+      await saveUser(id);
+    });
+  });
+  $('#admin-users-table').querySelectorAll('input[data-plan="plan_name"], input[data-plan="plan_note"]').forEach(inp=>{
+    inp.addEventListener('blur', async ()=>{
+      const id = Number(inp.getAttribute('data-id'));
+      await saveUser(id);
+    });
+  });
+  $('#admin-users-table').querySelectorAll('input[data-plan="plan_expires_at"]').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const id = Number(inp.getAttribute('data-id'));
+      await saveUser(id);
+    });
+  });
+
+  $('#admin-users-table').querySelectorAll('.ledger-user').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = Number(btn.getAttribute('data-id'));
+      state.ledgerFilterUserId = id;
+      const filter = $('#ledger-filter-user');
+      if(filter) filter.value = String(id);
+      await loadLedgerEvents();
+    });
+  });
+
+  const selectAll = $('#bulk-select-all');
+  if(selectAll && selectAll.checked){
+    $('#admin-users-table').querySelectorAll('.bulk-select').forEach(cb=>{ cb.checked = true; });
+  }
+}
+
+function renderLedgerUserOptions(){
+  const userSelects = [$('#ledger-user'), $('#ledger-profit-user')].filter(Boolean);
+  const filterSelect = $('#ledger-filter-user');
+  const auditSelect = $('#audit-filter-user');
+  if(!userSelects.length && !filterSelect && !auditSelect) return;
+  const options = state.users.map(u=>{
+    const label = `${u.email || u.name || 'User'} (#${u.id})`;
+    return `<option value="${u.id}">${label}</option>`;
+  }).join('');
+  userSelects.forEach(sel=>{
+    const current = sel.value;
+    sel.innerHTML = options;
+    if(current){
+      sel.value = current;
+    }
+  });
+  if(filterSelect){
+    const current = filterSelect.value;
+    filterSelect.innerHTML = `<option value="">All users</option>` + options;
+    filterSelect.value = current;
+  }
+  if(auditSelect){
+    const current = auditSelect.value;
+    auditSelect.innerHTML = `<option value="">All users</option>` + options;
+    auditSelect.value = current;
+  }
+}
+
+async function loadUsers(){
+  const data = await fetchJSON('/admin/users');
+  state.users = data.users || [];
+  renderStats();
+  renderUsers();
+  renderLedgerUserOptions();
+}
+
+async function loadLedgerSummary(){
+  state.ledgerSummary = await fetchJSON('/admin/ledger/summary');
+  renderLedgerStats();
+}
+
+async function loadLedgerEvents(){
+  const userId = state.ledgerFilterUserId;
+  const query = userId ? `?limit=50&user_id=${encodeURIComponent(userId)}` : '?limit=50';
+  const data = await fetchJSON('/admin/ledger/events' + query);
+  state.ledgerEvents = data.events || [];
+  const rows = state.ledgerEvents.map(e=>`
+    <tr>
+      <td>${e.id}</td>
+      <td>${e.email || ''}</td>
+      <td>${e.kind}</td>
+      <td>${fmtNum(e.principal_delta)}</td>
+      <td>${fmtNum(e.profit_delta)}</td>
+      <td>${e.note || ''}</td>
+      <td>${fmtTime(e.created_at)}</td>
+      <td>${e.batch_id || ''}</td>
+    </tr>
+  `).join('');
+  $('#ledger-events').innerHTML = `
+    <table class="trades">
+      <thead>
+        <tr><th>ID</th><th>User</th><th>Kind</th><th>Principal Δ</th><th>Profit Δ</th><th>Note</th><th>When</th><th>Batch</th></tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="8">No ledger activity yet.</td></tr>`}</tbody>
+    </table>
+  `;
+}
+
+async function loadAuditEvents(){
+  const userId = state.auditFilterUserId;
+  const query = userId ? `?limit=100&target_user_id=${encodeURIComponent(userId)}` : '?limit=100';
+  const data = await fetchJSON('/admin/audit' + query);
+  state.auditEvents = data.events || [];
+  const rows = state.auditEvents.map(e=>{
+    let payload = e.payload || '';
+    if(payload && payload.length > 120){
+      payload = payload.slice(0, 117) + '...';
+    }
+    return `
+      <tr>
+        <td>${e.id}</td>
+        <td>${e.action}</td>
+        <td>${e.admin_email || e.admin_name || ''}</td>
+        <td>${e.user_email || e.user_name || ''}</td>
+        <td>${payload}</td>
+        <td>${fmtTime(e.created_at)}</td>
+      </tr>
+    `;
+  }).join('');
+  $('#audit-events').innerHTML = `
+    <table class="trades">
+      <thead>
+        <tr><th>ID</th><th>Action</th><th>Admin</th><th>User</th><th>Payload</th><th>When</th></tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="6">No audit events yet.</td></tr>`}</tbody>
+    </table>
+  `;
+}
+
+async function ledgerAction(path, payload, okMsg){
+  const msg = $('#ledger-msg');
+  if(msg) msg.textContent = 'Working...';
+  try{
+    await fetchJSON(path, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if(msg) msg.textContent = okMsg;
+    await render();
+  }catch(e){
+    if(msg) msg.textContent = String(e);
+  }
+}
+
+async function loadSuggestions(){
+  const data = await fetchJSON('/admin/suggestions');
+  state.suggestions = data.suggestions || [];
+  const rows = state.suggestions.map(s=>`
+    <tr>
+      <td>${s.id}</td>
+      <td>${s.email || ''}</td>
+      <td>${s.text}</td>
+      <td>${fmtTime(s.created_at)}</td>
+      <td>${s.resolved ? 'yes' : 'no'}</td>
+      <td>${s.resolved ? '' : `<button class="cta resolve-sug" data-id="${s.id}">Resolve</button>`}</td>
+    </tr>
+  `).join('');
+  $('#admin-suggestions').innerHTML = `
+    <table class="trades">
+      <thead>
+        <tr><th>ID</th><th>User</th><th>Text</th><th>Created</th><th>Resolved</th><th></th></tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="6">No suggestions.</td></tr>`}</tbody>
+    </table>
+  `;
+  $('#admin-suggestions').querySelectorAll('.resolve-sug').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.getAttribute('data-id');
+      try{
+        await fetchJSON('/admin/suggestions/resolve?id=' + id, {method:'POST'});
+        await loadSuggestions();
+      }catch(e){
+        $('#admin-msg').textContent = String(e);
+      }
+    });
+  });
+}
+
+async function render(){
+  await loadUsers();
+  await loadSuggestions();
+  await loadLedgerSummary();
+  await loadLedgerEvents();
+  await loadAuditEvents();
+}
+
+$('#refresh-users')?.addEventListener('click', render);
+$('#user-search')?.addEventListener('input', renderUsers);
+$('#filter-plan')?.addEventListener('change', renderUsers);
+$('#filter-active')?.addEventListener('change', renderUsers);
+
+function selectedUserIds(){
+  const list = [];
+  document.querySelectorAll('.bulk-select').forEach(cb=>{
+    if(cb.checked){
+      const id = Number(cb.getAttribute('data-id'));
+      if(id) list.push(id);
+    }
+  });
+  return list;
+}
+
+async function bulkUpdate(payload, okMsg){
+  const msg = $('#admin-msg');
+  if(msg) msg.textContent = 'Working...';
+  try{
+    payload.user_ids = selectedUserIds();
+    if(!payload.user_ids.length){
+      if(msg) msg.textContent = 'Select at least one user.';
+      return;
+    }
+    await fetchJSON('/admin/users/bulk_update', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if(msg) msg.textContent = okMsg;
+    await loadUsers();
+  }catch(e){
+    if(msg) msg.textContent = String(e);
+  }
+}
+
+$('#bulk-select-all')?.addEventListener('change', (e)=>{
+  const checked = e.target.checked;
+  document.querySelectorAll('.bulk-select').forEach(cb=>{ cb.checked = checked; });
+});
+
+$('#bulk-enable-plus')?.addEventListener('click', ()=> bulkUpdate({has_mystrix_plus:true}, 'MystriX+ enabled.'));
+$('#bulk-disable-plus')?.addEventListener('click', ()=> bulkUpdate({has_mystrix_plus:false}, 'MystriX+ disabled.'));
+$('#bulk-enable-backtest')?.addEventListener('click', ()=> bulkUpdate({has_backtest:true}, 'Backtest enabled.'));
+$('#bulk-disable-backtest')?.addEventListener('click', ()=> bulkUpdate({has_backtest:false}, 'Backtest disabled.'));
+$('#bulk-enable-autotrader')?.addEventListener('click', ()=> bulkUpdate({has_autotrader:true}, 'AutoTrader enabled.'));
+$('#bulk-disable-autotrader')?.addEventListener('click', ()=> bulkUpdate({has_autotrader:false}, 'AutoTrader disabled.'));
+$('#bulk-enable-chat')?.addEventListener('click', ()=> bulkUpdate({has_chat:true}, 'Chat enabled.'));
+$('#bulk-disable-chat')?.addEventListener('click', ()=> bulkUpdate({has_chat:false}, 'Chat disabled.'));
+$('#bulk-activate')?.addEventListener('click', ()=> bulkUpdate({is_active:true}, 'Users activated.'));
+$('#bulk-disable')?.addEventListener('click', ()=> bulkUpdate({is_active:false}, 'Users disabled.'));
+
+$('#bulk-apply-plan')?.addEventListener('click', ()=>{
+  const name = $('#bulk-plan-name')?.value || '';
+  const note = $('#bulk-plan-note')?.value || '';
+  const expires = $('#bulk-plan-expires')?.value || '';
+  const expiresAt = expires ? Math.floor(new Date(expires).getTime() / 1000) : null;
+  bulkUpdate({
+    plan_name: name || null,
+    plan_note: note || null,
+    plan_expires_at: expiresAt,
+  }, 'Plan details applied.');
+});
+
+$('#bulk-clear-expiry')?.addEventListener('click', ()=> bulkUpdate({clear_plan_expires:true}, 'Expiry cleared.'));
+
+$('#ledger-filter-apply')?.addEventListener('click', async ()=>{
+  const userId = Number($('#ledger-filter-user')?.value || 0);
+  state.ledgerFilterUserId = userId || null;
+  await loadLedgerEvents();
+});
+
+$('#ledger-filter-clear')?.addEventListener('click', async ()=>{
+  state.ledgerFilterUserId = null;
+  const filter = $('#ledger-filter-user');
+  if(filter) filter.value = '';
+  await loadLedgerEvents();
+});
+
+$('#ledger-export')?.addEventListener('click', ()=>{
+  const userId = state.ledgerFilterUserId;
+  const url = API + '/admin/ledger/export' + (userId ? `?user_id=${encodeURIComponent(userId)}` : '');
+  window.open(url, '_blank');
+});
+
+$('#audit-filter-apply')?.addEventListener('click', async ()=>{
+  const userId = Number($('#audit-filter-user')?.value || 0);
+  state.auditFilterUserId = userId || null;
+  await loadAuditEvents();
+});
+
+$('#audit-filter-clear')?.addEventListener('click', async ()=>{
+  state.auditFilterUserId = null;
+  const filter = $('#audit-filter-user');
+  if(filter) filter.value = '';
+  await loadAuditEvents();
+});
+
+$('#audit-export')?.addEventListener('click', ()=>{
+  const userId = state.auditFilterUserId;
+  const url = API + '/admin/audit/export' + (userId ? `?target_user_id=${encodeURIComponent(userId)}` : '');
+  window.open(url, '_blank');
+});
+
+$('#ledger-deposit')?.addEventListener('click', async ()=>{
+  const userId = Number($('#ledger-user')?.value || 0);
+  const amount = Number($('#ledger-amount')?.value || 0);
+  const note = $('#ledger-note')?.value || '';
+  if(!userId) return;
+  await ledgerAction('/admin/ledger/deposit', {user_id: userId, amount, note}, 'Deposit recorded.');
+});
+
+$('#ledger-withdraw')?.addEventListener('click', async ()=>{
+  const userId = Number($('#ledger-user')?.value || 0);
+  const amount = Number($('#ledger-amount')?.value || 0);
+  const note = $('#ledger-note')?.value || '';
+  if(!userId) return;
+  await ledgerAction('/admin/ledger/withdraw', {user_id: userId, amount, note}, 'Principal withdrawn.');
+});
+
+$('#ledger-allocate')?.addEventListener('click', async ()=>{
+  const amount = Number($('#ledger-yield')?.value || 0);
+  const note = $('#ledger-yield-note')?.value || '';
+  await ledgerAction('/admin/ledger/profit_allocate', {amount, note}, 'Profit allocated.');
+});
+
+$('#ledger-profit-withdraw')?.addEventListener('click', async ()=>{
+  const userId = Number($('#ledger-profit-user')?.value || 0);
+  const amount = Number($('#ledger-profit-amount')?.value || 0);
+  const note = $('#ledger-profit-note')?.value || '';
+  if(!userId) return;
+  await ledgerAction('/admin/ledger/profit_withdraw', {user_id: userId, amount, note}, 'Profit withdrawal recorded.');
+});
+
+(async ()=>{
+  if(await requireAdmin()){
+    render();
+  }
+})();

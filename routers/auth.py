@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 
 from engine.storage import _conn
 from schemas.auth import FavReq, LoginReq, SignupReq, SuggestReq
-from services.auth import create_session, get_user_from_sid, hash_pw
+from services.auth import create_session, get_user_from_sid, hash_pw, is_reserved_admin_identity
 
 
 router = APIRouter(tags=["auth"])
@@ -16,6 +16,8 @@ router = APIRouter(tags=["auth"])
 @router.post("/auth/signup")
 def auth_signup(req: SignupReq):
     try:
+        if is_reserved_admin_identity(req.email) or is_reserved_admin_identity(req.name or ""):
+            raise HTTPException(403, "admin signup disabled")
         h, salt = hash_pw(req.password)
         now = int(time.time())
         with _conn() as con:
@@ -34,13 +36,13 @@ def auth_login(req: LoginReq, response: Response):
         login_key = req.email.strip()
         with _conn() as con:
             row = con.execute(
-                "SELECT id, pass_hash, pass_salt FROM users WHERE email=?",
+                "SELECT id, pass_hash, pass_salt, is_active FROM users WHERE email=?",
                 (login_key,),
             ).fetchone()
             if not row:
                 # Fallback: allow login by name (case-insensitive)
                 row = con.execute(
-                    "SELECT id, pass_hash, pass_salt FROM users WHERE LOWER(name)=LOWER(?)",
+                    "SELECT id, pass_hash, pass_salt, is_active FROM users WHERE LOWER(name)=LOWER(?)",
                     (login_key,),
                 ).fetchone()
         if not row:
@@ -48,10 +50,15 @@ def auth_login(req: LoginReq, response: Response):
         uid = int(row[0])
         phash = row[1] if row[1] is not None else ""
         salt_hex = row[2]
+        is_active = row[3] if len(row) > 3 else 1
+        if int(is_active or 0) == 0:
+            raise HTTPException(403, "account disabled")
         use_salt = salt_hex if (isinstance(salt_hex, str) and len(salt_hex) % 2 == 0) else None
         calc, _ = hash_pw(req.password, use_salt)
         if calc != str(phash):
             raise HTTPException(401, "invalid credentials")
+        with _conn() as con:
+            con.execute("UPDATE users SET last_login=? WHERE id=?", (int(time.time()), uid))
         sid = create_session(uid)
         response.set_cookie("sid", sid, httponly=True, samesite="lax", max_age=7 * 24 * 3600, path="/")
         return {"ok": True}

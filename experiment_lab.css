@@ -33,7 +33,13 @@ body#experiment-lab {
   color: var(--exp-text);
   display: flex;
   flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+button, input, select, textarea { font-family: inherit; }
+input::placeholder,
+textarea::placeholder { color: rgba(247,242,255,0.6); }
 
 .brand-pin {
   position: fixed;

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="MystriX product lineup and pricing." />
+    <title>MystriX Products</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=products01" />
+  </head>
+  <body class="has-dock">
+    <div class="lightbar" aria-hidden="true"></div>
+    <div class="corner-logo" aria-hidden="true">
+      <img src="mystrix_logo.png" alt="MystriX logo" />
+    </div>
+
+    <header class="site-header">
+      <div class="logo">WOLF HOUSE</div>
+      <nav class="nav">
+        <a href="index.html#home">Home</a>
+        <a href="products.html" class="active">Products</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="login.html">Login / Signup</a>
+        <a href="#" class="nav-join">Join</a>
+      </nav>
+    </header>
+
+    <main class="hero" id="products">
+      <h1>Products</h1>
+      <p class="subcopy">Hover each card to reveal the deeper capabilities. Neon means unlocked power.</p>
+      <div class="product-grid">
+        <div class="product-card product-card-hover">
+          <h3>MystriX Core</h3>
+          <p>Signal engine + disciplined risk layer. Built for precision traders.</p>
+          <div class="tag-row">
+            <span class="tag">Live Signals</span>
+            <span class="tag">Risk Spine</span>
+          </div>
+          <div class="product-details">
+            <ul>
+              <li>Core divergence scanner</li>
+              <li>Signal snapshots + charts</li>
+              <li>Manual trade tracking</li>
+              <li>Transparent logs</li>
+            </ul>
+            <div class="price-line">$0 • Core access</div>
+          </div>
+        </div>
+        <div class="product-card product-card-hover">
+          <h3>MystriX+</h3>
+          <p>Advanced ML filter + multi-asset divergence hunter.</p>
+          <div class="tag-row">
+            <span class="tag">ML Filter</span>
+            <span class="tag">Multi Asset</span>
+          </div>
+          <div class="product-details">
+            <ul>
+              <li>ML confidence scoring</li>
+              <li>Live auto-scanner feeds</li>
+              <li>AutoTrader bridge</li>
+              <li>Risk + compounding tracker</li>
+            </ul>
+            <div class="price-line"><span class="strike">$99</span> $25 (beta access)</div>
+          </div>
+        </div>
+        <div class="product-card product-card-hover">
+          <h3>MystriX CPA</h3>
+          <p>Concurrent backtester + portfolio stress tests.</p>
+          <div class="tag-row">
+            <span class="tag">Backtesting</span>
+            <span class="tag">Portfolio</span>
+          </div>
+          <div class="product-details">
+            <ul>
+              <li>Concurrent trade engine</li>
+              <li>Equity curve + metrics</li>
+              <li>Preset libraries</li>
+              <li>Optimization cadence</li>
+            </ul>
+            <div class="price-line">Included with MystriX+</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="bottom-dock" role="contentinfo">
+      <div class="dock-inner">
+        <nav class="nav bottom-nav" aria-label="Primary">
+          <a href="index.html#home">Home</a>
+          <a href="products.html" class="active">Products</a>
+          <a href="downloads.html">Downloads</a>
+          <a href="login.html">Login / Signup</a>
+          <a href="#" class="nav-join">Join</a>
+        </nav>
+        <div class="floorbar"><span class="floor-text">(c) <span class="year"></span> Wolf House. All rights reserved.</span></div>
+      </div>
+    </div>
+
+    <script src="script.js?v=products01"></script>
+    <button class="theme-switch theme-switch-floating" data-theme-toggle type="button">Theme</button>
+    <script src="theme_toggle.js" defer></script>
+  </body>
+</html>
